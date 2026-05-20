@@ -362,13 +362,14 @@
   <!-- FINANCEIRO -->
   <div id="page-financeiro" class="page">
     <div class="kpi-grid" style="margin-bottom:24px">
-      <div class="kpi-card"><div class="kpi-icon" style="background:var(--green-light)">💰</div><div><div class="kpi-label">Lucro Real Total</div><div class="kpi-value" id="fin-total">—</div><div class="kpi-sub" id="fin-periodo">Manutenção + Nova Locação</div></div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--green-light)">💰</div><div><div class="kpi-label">Lucro Real Total</div><div class="kpi-value" id="fin-total">—</div><div class="kpi-sub" id="fin-periodo">Manutenção + Nova Locação + Rescisão</div></div></div>
       <div class="kpi-card"><div class="kpi-icon" style="background:var(--primary-light)">🔧</div><div><div class="kpi-label">Lucro — Manutenção</div><div class="kpi-value" id="fin-manut">—</div><div class="kpi-sub" id="fin-manut-qt">0 registros</div></div></div>
       <div class="kpi-card"><div class="kpi-icon" style="background:#fce7f3">🏡</div><div><div class="kpi-label">Lucro — Nova Locação</div><div class="kpi-value" id="fin-nova">—</div><div class="kpi-sub" id="fin-nova-qt">0 registros</div></div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--red-light)">📤</div><div><div class="kpi-label">Lucro — Rescisão</div><div class="kpi-value" id="fin-resc">—</div><div class="kpi-sub" id="fin-resc-qt">0 registros</div></div></div>
       <div class="kpi-card"><div class="kpi-icon" style="background:var(--yellow-light)">📊</div><div><div class="kpi-label">Ticket Médio</div><div class="kpi-value" id="fin-ticket">—</div><div class="kpi-sub">por operação com lucro</div></div></div>
     </div>
     <div class="card">
-      <div class="card-header"><span class="card-title">Detalhamento — Manutenção &amp; Nova Locação</span></div>
+      <div class="card-header"><span class="card-title">Detalhamento — Manutenção, Nova Locação &amp; Rescisão</span></div>
       <div class="filters-bar" style="flex-direction:row;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="filter-label" style="min-width:auto">Mês</span>
         <div id="fMes" style="display:flex;gap:6px;flex-wrap:wrap">
@@ -787,7 +788,7 @@ function monthLabel(k) {
 function renderFinanceiro() {
   if (!data.length) return;
 
-  const allFin = data.filter(r => r['Tarefa']==='Manutenção' || r['Tarefa']==='Nova Locação');
+  const allFin = data.filter(r => r['Tarefa']==='Manutenção' || r['Tarefa']==='Nova Locação' || r['Tarefa']==='Rescisão');
 
   // Build month chips
   const months = [...new Set(allFin.map(r => monthKey(r['Data de início'])).filter(Boolean))]
@@ -814,20 +815,24 @@ function renderFinanceiro() {
   const fin   = finMes ? allFin.filter(r => monthKey(r['Data de início']) === finMes) : allFin;
   const manut = fin.filter(r => r['Tarefa']==='Manutenção');
   const nova  = fin.filter(r => r['Tarefa']==='Nova Locação');
+  const resc  = fin.filter(r => r['Tarefa']==='Rescisão');
 
   const totalLucro = fin.reduce((s,r)   => s + parseBRL(r['Lucro real ']), 0);
   const lucroManut = manut.reduce((s,r) => s + parseBRL(r['Lucro real ']), 0);
   const lucroNova  = nova.reduce((s,r)  => s + parseBRL(r['Lucro real ']), 0);
+  const lucroResc  = resc.reduce((s,r)  => s + parseBRL(r['Lucro real ']), 0);
   const comLucro   = fin.filter(r => parseBRL(r['Lucro real ']) > 0);
   const ticket     = comLucro.length ? totalLucro / comLucro.length : 0;
 
   set('fin-total',    fmtBRL(totalLucro));
   set('fin-manut',    fmtBRL(lucroManut));
   set('fin-nova',     fmtBRL(lucroNova));
+  set('fin-resc',     fmtBRL(lucroResc));
   set('fin-ticket',   fmtBRL(ticket));
   set('fin-manut-qt', manut.length + ' registro' + (manut.length!==1?'s':''));
   set('fin-nova-qt',  nova.length  + ' registro' + (nova.length!==1?'s':''));
-  set('fin-periodo',  finMes ? 'Período: ' + monthLabel(finMes) : 'Manutenção + Nova Locação');
+  set('fin-resc-qt',  resc.length  + ' registro' + (resc.length!==1?'s':''));
+  set('fin-periodo',  finMes ? 'Período: ' + monthLabel(finMes) : 'Manutenção + Nova Locação + Rescisão');
 
   if (!fin.length) {
     document.getElementById('finTableWrap').innerHTML =
@@ -857,7 +862,7 @@ function renderFinanceiro() {
 }
 
 function renderLucroMesChart() {
-  const allFin = data.filter(r => r['Tarefa']==='Manutenção' || r['Tarefa']==='Nova Locação');
+  const allFin = data.filter(r => r['Tarefa']==='Manutenção' || r['Tarefa']==='Nova Locação' || r['Tarefa']==='Rescisão');
   const months = [...new Set(allFin.map(r => monthKey(r['Data de início'])).filter(Boolean))]
     .sort((a,b) => { const [ma,ya] = a.split('/'), [mb,yb] = b.split('/'); return (ya-yb)||(ma-mb); });
 
@@ -869,6 +874,9 @@ function renderLucroMesChart() {
   const novaData = months.map(m =>
     allFin.filter(r => r['Tarefa']==='Nova Locação' && monthKey(r['Data de início'])===m)
           .reduce((s,r) => s + parseBRL(r['Lucro real ']), 0));
+  const rescData = months.map(m =>
+    allFin.filter(r => r['Tarefa']==='Rescisão' && monthKey(r['Data de início'])===m)
+          .reduce((s,r) => s + parseBRL(r['Lucro real ']), 0));
 
   if (chartLucroMes) chartLucroMes.destroy();
   chartLucroMes = new Chart(document.getElementById('chartLucroMes'), {
@@ -877,7 +885,8 @@ function renderLucroMesChart() {
       labels: months.map(monthLabel),
       datasets: [
         { label:'Manutenção',   data:manutData, backgroundColor:'rgba(79,70,229,.85)',  borderRadius:6, borderSkipped:false },
-        { label:'Nova Locação', data:novaData,  backgroundColor:'rgba(16,185,129,.85)', borderRadius:6, borderSkipped:false }
+        { label:'Nova Locação', data:novaData,  backgroundColor:'rgba(16,185,129,.85)', borderRadius:6, borderSkipped:false },
+        { label:'Rescisão',     data:rescData,  backgroundColor:'rgba(239,68,68,.75)',  borderRadius:6, borderSkipped:false }
       ]
     },
     options: {
