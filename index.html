@@ -770,6 +770,9 @@ function parseBRL(s) {
   if (!s) return 0;
   return parseFloat(s.replace(/R\$\s?/g,'').replace(/\./g,'').replace(',','.').trim()) || 0;
 }
+function calcLucro(r) {
+  return parseBRL(r['valor cobrado cliente']) - parseBRL(r['valor do serviço']);
+}
 function fmtBRL(n) {
   return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
 }
@@ -817,11 +820,11 @@ function renderFinanceiro() {
   const nova  = fin.filter(r => r['Tarefa']==='Nova Locação');
   const resc  = fin.filter(r => r['Tarefa']==='Rescisão');
 
-  const totalLucro = fin.reduce((s,r)   => s + parseBRL(r['Lucro real ']), 0);
-  const lucroManut = manut.reduce((s,r) => s + parseBRL(r['Lucro real ']), 0);
-  const lucroNova  = nova.reduce((s,r)  => s + parseBRL(r['Lucro real ']), 0);
-  const lucroResc  = resc.reduce((s,r)  => s + parseBRL(r['Lucro real ']), 0);
-  const comLucro   = fin.filter(r => parseBRL(r['Lucro real ']) > 0);
+  const totalLucro = fin.reduce((s,r)   => s + calcLucro(r), 0);
+  const lucroManut = manut.reduce((s,r) => s + calcLucro(r), 0);
+  const lucroNova  = nova.reduce((s,r)  => s + calcLucro(r), 0);
+  const lucroResc  = resc.reduce((s,r)  => s + calcLucro(r), 0);
+  const comLucro   = fin.filter(r => calcLucro(r) > 0);
   const ticket     = comLucro.length ? totalLucro / comLucro.length : 0;
 
   set('fin-total',    fmtBRL(totalLucro));
@@ -844,7 +847,7 @@ function renderFinanceiro() {
     <div class="table-wrap"><table>
       <thead><tr><th>Tipo</th><th>Responsável</th><th>Inquilino</th><th>Condomínio</th><th>Status</th><th>Valor do Serviço</th><th>Valor Cobrado</th><th>Lucro Real</th><th>Data Início</th></tr></thead>
       <tbody>${fin.map(r => {
-        const lucro = parseBRL(r['Lucro real ']);
+        const lucro = calcLucro(r);
         return `<tr>
           <td>${tipoTag(r['Tarefa'])}</td>
           <td><span class="resp-badge">${r['Responsavel']||'—'}</span></td>
@@ -853,7 +856,10 @@ function renderFinanceiro() {
           <td>${statusTag(r['Status'])}</td>
           <td style="font-size:12px">${r['valor do serviço']||'—'}</td>
           <td style="font-size:12px">${r['valor cobrado cliente']||'—'}</td>
-          <td style="font-weight:700;color:${lucro>0?'var(--green)':lucro<0?'var(--red)':'var(--muted)'}">${fmtBRL(lucro)}</td>
+          <td style="font-weight:700;color:${lucro>0?'var(--green)':lucro<0?'var(--red)':'var(--muted)'}">
+            ${fmtBRL(lucro)}
+            ${lucro===0&&(parseBRL(r['valor cobrado cliente'])||parseBRL(r['valor do serviço']))?'':''}
+          </td>
           <td style="font-size:12px;white-space:nowrap">${r['Data de início']||'—'}</td>
         </tr>`;
       }).join('')}</tbody>
@@ -870,13 +876,13 @@ function renderLucroMesChart() {
 
   const manutData = months.map(m =>
     allFin.filter(r => r['Tarefa']==='Manutenção' && monthKey(r['Data de início'])===m)
-          .reduce((s,r) => s + parseBRL(r['Lucro real ']), 0));
+          .reduce((s,r) => s + calcLucro(r), 0));
   const novaData = months.map(m =>
     allFin.filter(r => r['Tarefa']==='Nova Locação' && monthKey(r['Data de início'])===m)
-          .reduce((s,r) => s + parseBRL(r['Lucro real ']), 0));
+          .reduce((s,r) => s + calcLucro(r), 0));
   const rescData = months.map(m =>
     allFin.filter(r => r['Tarefa']==='Rescisão' && monthKey(r['Data de início'])===m)
-          .reduce((s,r) => s + parseBRL(r['Lucro real ']), 0));
+          .reduce((s,r) => s + calcLucro(r), 0));
 
   if (chartLucroMes) chartLucroMes.destroy();
   chartLucroMes = new Chart(document.getElementById('chartLucroMes'), {
