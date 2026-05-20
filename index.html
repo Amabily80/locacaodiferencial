@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Locação</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f4f6fb; --sidebar-bg: #1a1d2e; --sidebar-hover: #252840;
+      --sidebar-active: #4f46e5; --card: #ffffff; --border: #e5e7f0;
+      --text: #1e2135; --muted: #6b7280; --primary: #4f46e5;
+      --primary-light: #ede9fe; --green: #10b981; --green-light: #d1fae5;
+      --red: #ef4444; --red-light: #fee2e2; --yellow: #f59e0b;
+      --yellow-light: #fef3c7; --blue: #3b82f6; --blue-light: #dbeafe;
+      --radius: 12px; --shadow: 0 1px 4px rgba(0,0,0,.07),0 4px 16px rgba(0,0,0,.05);
+    }
+    body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); display:flex; min-height:100vh; }
+
+    /* ── LOGIN OVERLAY ── */
+    #loginOverlay {
+      position:fixed; inset:0; background:var(--sidebar-bg);
+      display:flex; align-items:center; justify-content:center; z-index:999;
+    }
+    .login-card {
+      background:var(--card); border-radius:16px; padding:40px;
+      width:100%; max-width:380px; box-shadow:0 20px 60px rgba(0,0,0,.3);
+    }
+    .login-logo { display:flex; align-items:center; gap:10px; margin-bottom:28px; }
+    .login-logo-icon {
+      width:44px; height:44px; border-radius:10px; background:var(--primary);
+      display:grid; place-items:center; font-size:22px; overflow:hidden;
+    }
+    .login-logo-icon img { width:100%; height:100%; object-fit:cover; }
+    .login-title { font-size:20px; font-weight:800; color:var(--text); }
+    .login-sub   { font-size:12px; color:var(--muted); }
+    .login-label { font-size:12px; font-weight:600; color:var(--text); margin-bottom:5px; display:block; }
+    .login-input {
+      width:100%; padding:10px 14px; border:1px solid var(--border);
+      border-radius:8px; font-size:14px; outline:none; color:var(--text);
+      background:var(--bg); margin-bottom:14px; transition:border .15s;
+    }
+    .login-input:focus { border-color:var(--primary); }
+    .login-btn {
+      width:100%; padding:12px; background:var(--primary); color:#fff;
+      border:none; border-radius:8px; font-size:14px; font-weight:700;
+      cursor:pointer; transition:opacity .15s; margin-top:4px;
+    }
+    .login-btn:hover { opacity:.88; }
+    .login-err { color:var(--red); font-size:12px; font-weight:600; margin-top:8px; text-align:center; display:none; }
+
+    /* ── SIDEBAR ── */
+    #sidebar {
+      width:240px; min-height:100vh; background:var(--sidebar-bg);
+      display:flex; flex-direction:column; position:fixed; top:0; left:0; z-index:100;
+    }
+    .logo { padding:22px 20px 18px; display:flex; align-items:center; gap:10px; border-bottom:1px solid #2e3150; }
+    .logo-icon {
+      width:36px; height:36px; border-radius:8px; background:var(--primary);
+      display:grid; place-items:center; font-size:18px; flex-shrink:0; overflow:hidden;
+    }
+    .logo-icon img { width:100%; height:100%; object-fit:cover; }
+    .logo-text { color:#fff; font-weight:700; font-size:15px; line-height:1.1; }
+    .logo-sub  { color:#8b92bb; font-size:11px; }
+    nav { flex:1; padding:16px 12px; display:flex; flex-direction:column; gap:4px; }
+    .nav-label { color:#4b5280; font-size:10px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:12px 8px 4px; }
+    .nav-item {
+      display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:8px;
+      cursor:pointer; color:#8b92bb; font-size:14px; font-weight:500;
+      transition:background .15s,color .15s; user-select:none;
+    }
+    .nav-item:hover  { background:var(--sidebar-hover); color:#d1d5f0; }
+    .nav-item.active { background:var(--sidebar-active); color:#fff; }
+    .nav-item .icon  { font-size:16px; flex-shrink:0; width:20px; text-align:center; }
+    .badge { margin-left:auto; background:var(--red); color:#fff; border-radius:20px; font-size:11px; font-weight:700; padding:1px 7px; }
+    .sidebar-footer { padding:16px; border-top:1px solid #2e3150; display:flex; align-items:center; gap:10px; }
+    .avatar { width:34px; height:34px; border-radius:50%; background:var(--primary); color:#fff; display:grid; place-items:center; font-weight:700; font-size:13px; flex-shrink:0; }
+    .user-info .name { color:#d1d5f0; font-size:13px; font-weight:600; }
+    .user-info .role { color:#6b7494; font-size:11px; }
+
+    /* ── MAIN ── */
+    #main { margin-left:240px; flex:1; display:flex; flex-direction:column; min-height:100vh; }
+    header {
+      background:var(--card); border-bottom:1px solid var(--border);
+      padding:0 28px; height:60px; display:flex; align-items:center;
+      justify-content:space-between; position:sticky; top:0; z-index:50;
+    }
+    .page-title { font-size:16px; font-weight:700; }
+    .header-right { display:flex; align-items:center; gap:12px; }
+    .sync-info { font-size:11px; color:var(--muted); display:flex; align-items:center; gap:5px; }
+    .sync-dot { width:7px; height:7px; border-radius:50%; background:var(--green); flex-shrink:0; }
+    .sync-dot.loading { background:var(--yellow); animation:pulse .8s infinite alternate; }
+    .sync-dot.error   { background:var(--red); }
+    @keyframes pulse { to { opacity:.3; } }
+    .btn { padding:7px 14px; border-radius:8px; border:none; cursor:pointer; font-size:13px; font-weight:600; transition:opacity .15s; }
+    .btn:hover { opacity:.85; }
+    .btn-primary { background:var(--primary); color:#fff; }
+    .btn-outline { background:transparent; border:1px solid var(--border); color:var(--text); }
+    .btn-danger  { background:var(--red-light); color:var(--red); border:1px solid #fca5a5; }
+
+    /* ── PAGES ── */
+    .page { display:none; padding:28px; }
+    .page.active { display:block; }
+
+    /* ── KPI CARDS ── */
+    .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:24px; }
+    .kpi-card { background:var(--card); border-radius:var(--radius); border:1px solid var(--border); padding:20px 22px; box-shadow:var(--shadow); display:flex; align-items:flex-start; gap:14px; }
+    .kpi-icon { width:44px; height:44px; border-radius:10px; display:grid; place-items:center; font-size:20px; flex-shrink:0; }
+    .kpi-label { font-size:12px; color:var(--muted); font-weight:500; margin-bottom:4px; }
+    .kpi-value { font-size:24px; font-weight:800; color:var(--text); line-height:1; }
+    .kpi-sub   { font-size:11px; color:var(--muted); margin-top:3px; }
+
+    /* ── CARD ── */
+    .card { background:var(--card); border-radius:var(--radius); border:1px solid var(--border); box-shadow:var(--shadow); overflow:hidden; }
+    .card-header { padding:16px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:10px; }
+    .card-title { font-size:14px; font-weight:700; }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th { text-align:left; padding:10px 14px; background:#f8f9fe; color:var(--muted); font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; border-bottom:1px solid var(--border); white-space:nowrap; }
+    td { padding:11px 14px; border-bottom:1px solid #f0f1f8; vertical-align:middle; }
+    tr:last-child td { border-bottom:none; }
+    tr:hover td { background:#fbfbff; }
+    .td-name { font-weight:600; color:var(--text); }
+    .td-sub  { font-size:11px; color:var(--muted); margin-top:2px; }
+    .table-footer { padding:10px 20px; font-size:11px; color:var(--muted); border-top:1px solid var(--border); }
+
+    /* ── STATUS BADGES ── */
+    .status { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+    .status::before { content:''; width:6px; height:6px; border-radius:50%; }
+    .s-concluida    { background:var(--green-light);   color:#065f46; } .s-concluida::before  { background:var(--green); }
+    .s-execucao     { background:var(--yellow-light);  color:#92400e; } .s-execucao::before   { background:var(--yellow); }
+    .s-nao-iniciada { background:#f3f4f6;              color:#6b7280; } .s-nao-iniciada::before { background:#9ca3af; }
+    .s-contrato     { background:var(--blue-light);    color:#1e40af; } .s-contrato::before   { background:var(--blue); }
+
+    /* ── TIPO BADGES ── */
+    .tarefa-type { display:inline-flex; align-items:center; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap; }
+    .t-concluido  { background:var(--green-light);  color:#065f46; }
+    .t-rescisao   { background:var(--red-light);    color:#991b1b; }
+    .t-negociacao { background:var(--yellow-light); color:#92400e; }
+    .t-aditivo    { background:var(--blue-light);   color:#1e40af; }
+    .t-manutencao { background:var(--primary-light);color:#5b21b6; }
+    .t-nova       { background:#d1fae5;             color:#065f46; }
+    .t-boasvindas { background:#fce7f3;             color:#9d174d; }
+    .t-outros     { background:#f3f4f6;             color:#374151; }
+
+    .prio-badge { font-size:11px; font-weight:700; }
+    .prio-ok { color:var(--green); } .prio-1 { color:var(--red); }
+    .prio-2  { color:var(--yellow); } .prio-3 { color:var(--blue); } .prio-4 { color:var(--muted); }
+
+    .resp-badge { display:inline-block; padding:2px 9px; border-radius:12px; font-size:11px; font-weight:700; background:var(--primary-light); color:var(--primary); }
+    .role-badge { display:inline-block; padding:2px 9px; border-radius:12px; font-size:11px; font-weight:700; }
+    .role-master { background:#fce7f3; color:#9d174d; }
+    .role-admin  { background:var(--blue-light); color:#1e40af; }
+    .obs-cell { max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; color:var(--muted); cursor:help; }
+
+    /* ── FILTERS ── */
+    .filters-bar { padding:12px 20px; border-bottom:1px solid var(--border); display:flex; flex-direction:column; gap:8px; }
+    .filter-row  { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .filter-label { font-size:11px; font-weight:600; color:var(--muted); min-width:80px; }
+    .filter-chip { padding:4px 12px; border-radius:20px; border:1px solid var(--border); font-size:12px; font-weight:600; cursor:pointer; background:var(--bg); color:var(--muted); transition:all .15s; white-space:nowrap; }
+    .filter-chip.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .filter-chip:hover:not(.active) { border-color:var(--primary); color:var(--primary); }
+
+    /* ── LOADING / ERROR ── */
+    .state-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; gap:12px; color:var(--muted); font-size:14px; }
+    .spinner { width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--primary); border-radius:50%; animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── CHARTS ── */
+    .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px; }
+    .chart-wrap { position:relative; height:210px; }
+
+    /* ── SETTINGS PAGE ── */
+    .settings-section { margin-bottom:24px; }
+    .settings-section .card-body { padding:24px; display:flex; flex-direction:column; gap:16px; }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .form-group { display:flex; flex-direction:column; gap:6px; }
+    .form-label { font-size:12px; font-weight:600; color:var(--text); }
+    .form-input { padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; outline:none; color:var(--text); background:var(--bg); transition:border .15s; }
+    .form-input:focus { border-color:var(--primary); }
+    .form-hint  { font-size:11px; color:var(--muted); }
+    .logo-preview { display:flex; align-items:center; gap:10px; }
+    .logo-prev-box { width:48px; height:48px; border-radius:10px; background:var(--primary); display:grid; place-items:center; font-size:22px; overflow:hidden; flex-shrink:0; }
+    .logo-prev-box img { width:100%; height:100%; object-fit:cover; }
+
+    .user-table-wrap { overflow-x:auto; }
+    .add-user-form { padding:16px 20px; border-bottom:1px solid var(--border); background:#f8f9fe; display:grid; grid-template-columns:1fr 1fr 1fr 1fr auto; gap:10px; align-items:end; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width:860px) {
+      #sidebar { width:56px; }
+      .logo-text,.logo-sub,.nav-item span:not(.icon),.badge,.user-info { display:none; }
+      .logo { justify-content:center; }
+      .nav-item { justify-content:center; padding:12px 0; }
+      #main { margin-left:56px; }
+      .chart-grid,.form-row,.add-user-form { grid-template-columns:1fr; }
+    }
+    ::-webkit-scrollbar { width:5px; height:5px; }
+    ::-webkit-scrollbar-thumb { background:#d1d5f0; border-radius:4px; }
+  </style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div id="loginOverlay">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon" id="loginLogoIcon">🏠</div>
+      <div>
+        <div class="login-title" id="loginDashName">LocaFácil</div>
+        <div class="login-sub">Gestão de Imóveis</div>
+      </div>
+    </div>
+    <label class="login-label">Usuário</label>
+    <input class="login-input" id="loginUser" type="text" placeholder="Digite seu usuário" autocomplete="username" />
+    <label class="login-label">Senha</label>
+    <input class="login-input" id="loginPass" type="password" placeholder="Digite sua senha" autocomplete="current-password" />
+    <div class="login-err" id="loginErr">Usuário ou senha incorretos.</div>
+    <button class="login-btn" onclick="doLogin()">Entrar</button>
+  </div>
+</div>
+
+<!-- ── SIDEBAR ── -->
+<aside id="sidebar">
+  <div class="logo">
+    <div class="logo-icon" id="sideLogoIcon">🏠</div>
+    <div>
+      <div class="logo-text" id="sideDashName">LocaFácil</div>
+      <div class="logo-sub">Gestão de Imóveis</div>
+    </div>
+  </div>
+  <nav>
+    <div class="nav-label">Principal</div>
+    <div class="nav-item active" data-page="overview" onclick="goTo(this,'overview')">
+      <span class="icon">📊</span><span>Visão Geral</span>
+    </div>
+    <div class="nav-item" data-page="tarefas" onclick="goTo(this,'tarefas')">
+      <span class="icon">✅</span><span>Tarefas</span>
+      <span class="badge" id="badgeExec" style="display:none">0</span>
+    </div>
+    <div class="nav-item" data-page="contratos" onclick="goTo(this,'contratos')">
+      <span class="icon">📄</span><span>Contratos</span>
+    </div>
+    <div class="nav-item" data-page="financeiro" onclick="goTo(this,'financeiro')">
+      <span class="icon">💰</span><span>Financeiro</span>
+    </div>
+    <div class="nav-item" data-page="agenda" onclick="goTo(this,'agenda')">
+      <span class="icon">📅</span><span>Agenda</span>
+    </div>
+    <div class="nav-label">Configuração</div>
+    <div class="nav-item" id="navConfig" data-page="configuracoes" onclick="goTo(this,'configuracoes')">
+      <span class="icon">⚙️</span><span>Configurações</span>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="avatar" id="sideAvatar">?</div>
+    <div class="user-info">
+      <div class="name" id="sideName">—</div>
+      <div class="role" id="sideRole">—</div>
+    </div>
+  </div>
+</aside>
+
+<!-- ── MAIN ── -->
+<div id="main">
+  <header>
+    <div class="page-title" id="headerTitle">Visão Geral</div>
+    <div class="header-right">
+      <span class="sync-info">
+        <span class="sync-dot loading" id="syncDot"></span>
+        <span id="syncTime">Carregando...</span>
+      </span>
+      <button class="btn btn-outline" onclick="loadData()">↻ Atualizar</button>
+      <button class="btn btn-outline" onclick="doLogout()">Sair</button>
+    </div>
+  </header>
+
+  <!-- VISÃO GERAL -->
+  <div id="page-overview" class="page active">
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--primary-light)">📋</div><div><div class="kpi-label">Total Tarefas</div><div class="kpi-value" id="ov-total">—</div></div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--yellow-light)">⚡</div><div><div class="kpi-label">Em Execução</div><div class="kpi-value" id="ov-exec">—</div></div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--green-light)">✅</div><div><div class="kpi-label">Concluídas</div><div class="kpi-value" id="ov-conc">—</div></div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--red-light)">🔴</div><div><div class="kpi-label">Prioridade Alta</div><div class="kpi-value" id="ov-prio">—</div></div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--red-light)">📤</div><div><div class="kpi-label">Rescisões Abertas</div><div class="kpi-value" id="ov-resc">—</div></div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--blue-light)">📝</div><div><div class="kpi-label">Aditivos Pendentes</div><div class="kpi-value" id="ov-adit">—</div></div></div>
+    </div>
+    <div class="chart-grid">
+      <div class="card"><div class="card-header"><span class="card-title">Tarefas por Tipo</span></div><div style="padding:20px"><div class="chart-wrap"><canvas id="chartTipo"></canvas></div></div></div>
+      <div class="card"><div class="card-header"><span class="card-title">Tarefas por Status</span></div><div style="padding:20px"><div class="chart-wrap"><canvas id="chartStatus"></canvas></div></div></div>
+    </div>
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header"><span class="card-title">💰 Lucro Real por Mês — Manutenção &amp; Nova Locação</span></div>
+      <div style="padding:20px"><div class="chart-wrap" style="height:240px"><canvas id="chartLucroMes"></canvas></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">⚡ Em Execução — Prioridade Alta</span></div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Tipo</th><th>Prioridade</th><th>Responsável</th><th>Inquilino</th><th>Condomínio</th><th>Assunto</th></tr></thead>
+        <tbody id="ovPrioTbody"><tr><td colspan="6"><div class="state-wrap"><div class="spinner"></div></div></td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAREFAS -->
+  <div id="page-tarefas" class="page">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Todas as Tarefas</span>
+        <span class="sync-info"><span class="sync-dot" id="syncDot2"></span><span id="syncTime2">—</span></span>
+      </div>
+      <div class="filters-bar">
+        <div class="filter-row"><span class="filter-label">Tipo</span>
+          <div id="fTipo">
+            <span class="filter-chip active" data-v="">Todos</span>
+            <span class="filter-chip" data-v="Concluido">Concluído</span>
+            <span class="filter-chip" data-v="Rescisão">Rescisão</span>
+            <span class="filter-chip" data-v="Negociação">Negociação</span>
+            <span class="filter-chip" data-v="Aditivo">Aditivo</span>
+            <span class="filter-chip" data-v="Manutenção">Manutenção</span>
+            <span class="filter-chip" data-v="Nova Locação">Nova Locação</span>
+            <span class="filter-chip" data-v="Boas Vindas">Boas Vindas</span>
+          </div>
+        </div>
+        <div class="filter-row"><span class="filter-label">Status</span>
+          <div id="fStatus">
+            <span class="filter-chip active" data-v="">Todos</span>
+            <span class="filter-chip" data-v="Em execução">Em execução</span>
+            <span class="filter-chip" data-v="Concluída">Concluída</span>
+            <span class="filter-chip" data-v="Não iniciada">Não iniciada</span>
+            <span class="filter-chip" data-v="Em Contrato">Em Contrato</span>
+          </div>
+        </div>
+        <div class="filter-row"><span class="filter-label">Responsável</span>
+          <div id="fResp">
+            <span class="filter-chip active" data-v="">Todos</span>
+            <span class="filter-chip" data-v="Camila">Camila</span>
+            <span class="filter-chip" data-v="Evelin">Evelin</span>
+          </div>
+        </div>
+      </div>
+      <div id="tarefasWrap"><div class="state-wrap"><div class="spinner"></div><span>Carregando planilha...</span></div></div>
+    </div>
+  </div>
+
+  <!-- CONTRATOS -->
+  <div id="page-contratos" class="page">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Contratos</span></div>
+      <div class="state-wrap" style="padding:80px 20px">
+        <span style="font-size:36px">📄</span>
+        <span style="font-weight:700;font-size:15px">Em breve</span>
+        <span style="font-size:13px;color:var(--muted)">Esta seção será vinculada a uma planilha de contratos.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FINANCEIRO -->
+  <div id="page-financeiro" class="page">
+    <div class="kpi-grid" style="margin-bottom:24px">
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--green-light)">💰</div><div><div class="kpi-label">Lucro Real Total</div><div class="kpi-value" id="fin-total">—</div><div class="kpi-sub" id="fin-periodo">Manutenção + Nova Locação</div></div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--primary-light)">🔧</div><div><div class="kpi-label">Lucro — Manutenção</div><div class="kpi-value" id="fin-manut">—</div><div class="kpi-sub" id="fin-manut-qt">0 registros</div></div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:#fce7f3">🏡</div><div><div class="kpi-label">Lucro — Nova Locação</div><div class="kpi-value" id="fin-nova">—</div><div class="kpi-sub" id="fin-nova-qt">0 registros</div></div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--yellow-light)">📊</div><div><div class="kpi-label">Ticket Médio</div><div class="kpi-value" id="fin-ticket">—</div><div class="kpi-sub">por operação com lucro</div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Detalhamento — Manutenção &amp; Nova Locação</span></div>
+      <div class="filters-bar" style="flex-direction:row;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="filter-label" style="min-width:auto">Mês</span>
+        <div id="fMes" style="display:flex;gap:6px;flex-wrap:wrap">
+          <span class="filter-chip active" data-v="">Todos</span>
+        </div>
+      </div>
+      <div id="finTableWrap"><div class="state-wrap"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+
+  <!-- AGENDA -->
+  <div id="page-agenda" class="page">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Agenda</span></div>
+      <div class="state-wrap" style="padding:80px 20px">
+        <span style="font-size:36px">📅</span>
+        <span style="font-weight:700;font-size:15px">Em breve</span>
+        <span style="font-size:13px;color:var(--muted)">Esta seção será vinculada a um calendário de eventos.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIGURAÇÕES -->
+  <div id="page-configuracoes" class="page">
+
+    <div class="settings-section">
+      <div class="card">
+        <div class="card-header"><span class="card-title">🎨 Identidade do Dashboard</span></div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Nome do Dashboard</label>
+              <input class="form-input" id="cfgName" type="text" placeholder="Ex: LocaFácil" />
+              <span class="form-hint">Aparece na sidebar e na tela de login.</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Logo — URL da imagem</label>
+              <input class="form-input" id="cfgLogoUrl" type="text" placeholder="https://..." />
+              <span class="form-hint">Cole um link de imagem (PNG, JPG, SVG).</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Logo — Upload de arquivo</label>
+            <input class="form-input" id="cfgLogoFile" type="file" accept="image/*" style="padding:6px 12px" />
+            <span class="form-hint">Upload tem prioridade sobre a URL acima.</span>
+          </div>
+          <div class="logo-preview">
+            <div class="logo-prev-box" id="prevBox">🏠</div>
+            <span style="font-size:13px;color:var(--muted)">Prévia da logo</span>
+          </div>
+          <div>
+            <button class="btn btn-primary" onclick="saveIdentity()">Salvar Identidade</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">👥 Gerenciar Usuários</span>
+          <button class="btn btn-primary" onclick="toggleAddUser()">+ Novo Usuário</button>
+        </div>
+        <div id="addUserForm" style="display:none" class="add-user-form">
+          <div class="form-group">
+            <label class="form-label">Nome</label>
+            <input class="form-input" id="newName" type="text" placeholder="Nome completo" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Login</label>
+            <input class="form-input" id="newUser" type="text" placeholder="usuario" autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Senha</label>
+            <input class="form-input" id="newPass" type="password" placeholder="••••••" autocomplete="new-password" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Perfil</label>
+            <select class="form-input" id="newRole">
+              <option value="master">Master (acesso total)</option>
+              <option value="administrativo" selected>Administrativo</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" style="align-self:flex-end" onclick="createUser()">Criar</button>
+        </div>
+        <div id="addUserErr" style="display:none;padding:8px 20px;font-size:12px;color:var(--red);font-weight:600"></div>
+        <div class="user-table-wrap">
+          <table>
+            <thead><tr><th>Nome</th><th>Login</th><th>Perfil</th><th>Ação</th></tr></thead>
+            <tbody id="usersTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ── CONSTANTS ────────────────────────────────────────────────────────
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQzYS97vjuiIG8uBk_oSvsLi0AEVkSgr2cKsPY1d-XN5U6GcV8UA88Xf0mRCScaY7m4JRug2QqiztXw/pub?gid=1911345035&single=true&output=csv';
+const PAGE_TITLES = { overview:'Visão Geral', tarefas:'Tarefas', contratos:'Contratos', financeiro:'Financeiro', agenda:'Agenda', configuracoes:'Configurações' };
+
+// ── STATE ─────────────────────────────────────────────────────────────
+let data = [];
+let fTipo = '', fStatus = '', fResp = '', finMes = '';
+let chartTipo, chartStatus, chartLucroMes;
+
+// ── STORAGE HELPERS ───────────────────────────────────────────────────
+const DEFAULT_USERS = [
+  { username:'Amabily', password:'Amabily1205', name:'Amabily', role:'master' }
+];
+const DEFAULT_SETTINGS = { dashName:'LocaFácil', logoUrl:'' };
+
+function getUsers()    { try { return JSON.parse(localStorage.getItem('loca_users'))  || DEFAULT_USERS;    } catch(e) { return DEFAULT_USERS;    } }
+function saveUsers(u)  { localStorage.setItem('loca_users', JSON.stringify(u)); }
+function getSettings() { try { return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem('loca_cfg') || '{}') }; } catch(e) { return DEFAULT_SETTINGS; } }
+function saveCfg(s)    { localStorage.setItem('loca_cfg', JSON.stringify(s)); }
+function getSession()  { try { return JSON.parse(sessionStorage.getItem('loca_session')); } catch(e) { return null; } }
+function setSession(u) { sessionStorage.setItem('loca_session', JSON.stringify({ username:u.username, name:u.name, role:u.role })); }
+
+// ── AUTH ──────────────────────────────────────────────────────────────
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const users = getUsers();
+  const found = users.find(x => x.username === u && x.password === p);
+  const err = document.getElementById('loginErr');
+  if (found) {
+    err.style.display = 'none';
+    setSession(found);
+    document.getElementById('loginOverlay').style.display = 'none';
+    initDashboard();
+  } else {
+    err.style.display = 'block';
+  }
+}
+
+function doLogout() {
+  sessionStorage.removeItem('loca_session');
+  location.reload();
+}
+
+// Enter key on login
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('loginOverlay').style.display !== 'none') doLogin();
+});
+
+// ── NAVIGATION ────────────────────────────────────────────────────────
+function goTo(el, page) {
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('headerTitle').textContent = PAGE_TITLES[page] || page;
+  if (page === 'financeiro') renderFinanceiro();
+  if (page === 'configuracoes') renderSettings();
+}
+
+// ── APPLY SETTINGS ────────────────────────────────────────────────────
+function applySettings() {
+  const s = getSettings();
+  const name = s.dashName || 'LocaFácil';
+  document.title = name;
+  document.getElementById('sideDashName').textContent = name;
+  document.getElementById('loginDashName').textContent = name;
+
+  if (s.logoUrl) {
+    setLogoImg(s.logoUrl);
+  }
+}
+
+function setLogoImg(src) {
+  ['sideLogoIcon','loginLogoIcon'].forEach(id => {
+    const el = document.getElementById(id);
+    el.innerHTML = src ? `<img src="${src}" onerror="this.parentElement.textContent='🏠'">` : '🏠';
+  });
+}
+
+// ── INIT DASHBOARD ────────────────────────────────────────────────────
+function initDashboard() {
+  const session = getSession();
+  if (!session) return;
+
+  // Apply settings
+  applySettings();
+
+  // User info in sidebar
+  document.getElementById('sideAvatar').textContent = session.name.charAt(0).toUpperCase();
+  document.getElementById('sideName').textContent   = session.name;
+  document.getElementById('sideRole').textContent   = session.role === 'master' ? 'Master' : 'Administrativo';
+
+  // Hide Configurações for non-master
+  if (session.role !== 'master') {
+    document.getElementById('navConfig').style.display = 'none';
+  }
+
+  loadData();
+}
+
+// ── CSV FETCH WITH PROXY FALLBACK ─────────────────────────────────────
+async function fetchCSV() {
+  // 1. Try direct
+  try {
+    const r = await fetch(CSV_URL);
+    if (r.ok) return await r.text();
+  } catch(e) {}
+  // 2. corsproxy.io
+  try {
+    const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(CSV_URL));
+    if (r.ok) return await r.text();
+  } catch(e) {}
+  // 3. allorigins
+  const r = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(CSV_URL));
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return await r.text();
+}
+
+async function loadData() {
+  setSyncState('loading', 'Carregando...');
+  try {
+    const text = await fetchCSV();
+    data = parseCSV(text);
+    updateKpis();
+    renderCharts();
+    renderLucroMesChart();
+    renderPrioTable();
+    renderTarefas();
+
+    const currentPage = document.querySelector('.page.active')?.id?.replace('page-','');
+    if (currentPage === 'financeiro') renderFinanceiro();
+
+    const t = new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+    setSyncState('ok', 'Atualizado às ' + t);
+
+    const exec = data.filter(r => r['Status'] === 'Em execução').length;
+    const badge = document.getElementById('badgeExec');
+    badge.textContent = exec;
+    badge.style.display = exec ? '' : 'none';
+  } catch(e) {
+    setSyncState('error', 'Erro ao sincronizar');
+    document.getElementById('tarefasWrap').innerHTML =
+      `<div class="state-wrap" style="color:var(--red)">⚠️ Falha ao carregar: ${e.message}</div>`;
+  }
+}
+
+function setSyncState(state, msg) {
+  ['syncDot','syncDot2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'sync-dot' + (state==='loading'?' loading':state==='error'?' error':'');
+  });
+  ['syncTime','syncTime2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = msg;
+  });
+}
+
+// ── CSV PARSE ─────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = splitLine(lines[0]);
+  return lines.slice(1).map(line => {
+    const vals = splitLine(line);
+    const obj = {};
+    headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
+    return obj;
+  }).filter(r => r['Tarefa'] && r['Tarefa'].trim());
+}
+
+function splitLine(line) {
+  const out = []; let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { out.push(cur); cur = ''; }
+    else cur += c;
+  }
+  out.push(cur);
+  return out;
+}
+
+// ── KPIs ──────────────────────────────────────────────────────────────
+function updateKpis() {
+  set('ov-total', data.length);
+  set('ov-exec',  cnt(r => r['Status']==='Em execução'));
+  set('ov-conc',  cnt(r => r['Status']==='Concluída'));
+  set('ov-prio',  cnt(r => r['Prioridade']==='Prioridade 1'));
+  set('ov-resc',  cnt(r => r['Tarefa']==='Rescisão' && r['Status']!=='Concluída'));
+  set('ov-adit',  cnt(r => r['Tarefa']==='Aditivo'  && r['Status']!=='Concluída'));
+}
+const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+const cnt = fn => data.filter(fn).length;
+
+// ── CHARTS ────────────────────────────────────────────────────────────
+function renderCharts() {
+  const tipoC = {}, statC = {};
+  data.forEach(r => {
+    tipoC[r['Tarefa']]   = (tipoC[r['Tarefa']]   || 0) + 1;
+    statC[r['Status']] = (statC[r['Status']] || 0) + 1;
+  });
+  if (chartTipo)   chartTipo.destroy();
+  if (chartStatus) chartStatus.destroy();
+  const colors = ['#4f46e5','#10b981','#ef4444','#f59e0b','#3b82f6','#ec4899','#8b5cf6','#6b7280'];
+  const sColors = { 'Concluída':'#10b981','Em execução':'#f59e0b','Não iniciada':'#9ca3af','Em Contrato':'#3b82f6' };
+  const opts = { responsive:true, maintainAspectRatio:false, cutout:'60%', plugins:{ legend:{ position:'right', labels:{ font:{ size:11 }, padding:10 } } } };
+  chartTipo = new Chart(document.getElementById('chartTipo'), {
+    type:'doughnut',
+    data:{ labels:Object.keys(tipoC), datasets:[{ data:Object.values(tipoC), backgroundColor:colors, borderWidth:2, borderColor:'#fff' }] },
+    options:opts
+  });
+  chartStatus = new Chart(document.getElementById('chartStatus'), {
+    type:'doughnut',
+    data:{ labels:Object.keys(statC), datasets:[{ data:Object.values(statC), backgroundColor:Object.keys(statC).map(k=>sColors[k]||'#9ca3af'), borderWidth:2, borderColor:'#fff' }] },
+    options:opts
+  });
+}
+
+// ── PRIO TABLE (overview) ─────────────────────────────────────────────
+function renderPrioTable() {
+  const rows = data.filter(r => r['Prioridade']==='Prioridade 1' && r['Status']!=='Concluída');
+  const tb = document.getElementById('ovPrioTbody');
+  if (!rows.length) {
+    tb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Nenhuma tarefa de prioridade alta em aberto 🎉</td></tr>';
+    return;
+  }
+  tb.innerHTML = rows.map(r => `<tr>
+    <td>${tipoTag(r['Tarefa'])}</td><td>${prioTag(r['Prioridade'])}</td>
+    <td><span class="resp-badge">${r['Responsavel']||'—'}</span></td>
+    <td><div class="td-name">${r['Inquilino']||'—'}</div><div class="td-sub">${r['Proprietario']||''}</div></td>
+    <td style="font-size:12px">${r['Condominio']||'—'}</td>
+    <td style="font-size:12px">${r['Assunto']||'—'}</td>
+  </tr>`).join('');
+}
+
+// ── TAREFAS TABLE ─────────────────────────────────────────────────────
+function renderTarefas() {
+  const rows = data.filter(r =>
+    (!fTipo   || r['Tarefa']      === fTipo)   &&
+    (!fStatus || r['Status']      === fStatus) &&
+    (!fResp   || r['Responsavel'] === fResp)
+  );
+  if (!rows.length) {
+    document.getElementById('tarefasWrap').innerHTML = '<div class="state-wrap">📭 Nenhuma tarefa com esses filtros.</div>';
+    return;
+  }
+  document.getElementById('tarefasWrap').innerHTML = `
+    <div class="table-wrap"><table>
+      <thead><tr><th>Tipo</th><th>Prioridade</th><th>Responsável</th><th>Inquilino</th><th>Condomínio</th><th>Status</th><th>Início</th><th>Fim</th><th>Assunto</th><th>Garantia</th><th>Observações</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr>
+        <td>${tipoTag(r['Tarefa'])}</td>
+        <td>${prioTag(r['Prioridade'])}</td>
+        <td><span class="resp-badge">${r['Responsavel']||'—'}</span></td>
+        <td><div class="td-name">${r['Inquilino']||'—'}</div><div class="td-sub">${r['Proprietario']||''}</div></td>
+        <td style="font-size:12px">${r['Condominio']||'—'}</td>
+        <td>${statusTag(r['Status'])}</td>
+        <td style="font-size:12px;white-space:nowrap">${r['Data de início']||'—'}</td>
+        <td style="font-size:12px;white-space:nowrap">${r['Data de término']||'—'}</td>
+        <td style="font-size:12px;max-width:160px">${r['Assunto']||'—'}</td>
+        <td style="font-size:11px;white-space:nowrap">${r['Garantia de Locação']||'—'}</td>
+        <td><div class="obs-cell" title="${esc(r['Observações'])}">${r['Observações']||'—'}</div></td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+    <div class="table-footer">${rows.length} tarefa${rows.length!==1?'s':''} exibida${rows.length!==1?'s':''}</div>`;
+}
+
+// ── FINANCEIRO ────────────────────────────────────────────────────────
+function parseBRL(s) {
+  if (!s) return 0;
+  return parseFloat(s.replace(/R\$\s?/g,'').replace(/\./g,'').replace(',','.').trim()) || 0;
+}
+function fmtBRL(n) {
+  return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+function monthKey(d) {
+  if (!d) return null;
+  const p = d.split('/');
+  return p.length >= 3 ? p[1] + '/' + p[2] : null;
+}
+function monthLabel(k) {
+  if (!k) return k;
+  const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const [m, y] = k.split('/');
+  return (nomes[parseInt(m)-1] || m) + '/' + (y||'').slice(2);
+}
+
+function renderFinanceiro() {
+  if (!data.length) return;
+
+  const allFin = data.filter(r => r['Tarefa']==='Manutenção' || r['Tarefa']==='Nova Locação');
+
+  // Build month chips
+  const months = [...new Set(allFin.map(r => monthKey(r['Data de início'])).filter(Boolean))]
+    .sort((a,b) => {
+      const [ma,ya] = a.split('/'), [mb,yb] = b.split('/');
+      return (ya-yb) || (ma-mb);
+    });
+
+  const fMesEl = document.getElementById('fMes');
+  if (fMesEl) {
+    fMesEl.innerHTML = `<span class="filter-chip ${finMes===''?'active':''}" data-v="">Todos</span>`
+      + months.map(m => `<span class="filter-chip ${finMes===m?'active':''}" data-v="${m}">${monthLabel(m)}</span>`).join('');
+    fMesEl.onclick = e => {
+      const chip = e.target.closest('.filter-chip');
+      if (!chip) return;
+      fMesEl.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      finMes = chip.dataset.v;
+      renderFinanceiro();
+    };
+  }
+
+  // Filter by month
+  const fin   = finMes ? allFin.filter(r => monthKey(r['Data de início']) === finMes) : allFin;
+  const manut = fin.filter(r => r['Tarefa']==='Manutenção');
+  const nova  = fin.filter(r => r['Tarefa']==='Nova Locação');
+
+  const totalLucro = fin.reduce((s,r)   => s + parseBRL(r['Lucro real ']), 0);
+  const lucroManut = manut.reduce((s,r) => s + parseBRL(r['Lucro real ']), 0);
+  const lucroNova  = nova.reduce((s,r)  => s + parseBRL(r['Lucro real ']), 0);
+  const comLucro   = fin.filter(r => parseBRL(r['Lucro real ']) > 0);
+  const ticket     = comLucro.length ? totalLucro / comLucro.length : 0;
+
+  set('fin-total',    fmtBRL(totalLucro));
+  set('fin-manut',    fmtBRL(lucroManut));
+  set('fin-nova',     fmtBRL(lucroNova));
+  set('fin-ticket',   fmtBRL(ticket));
+  set('fin-manut-qt', manut.length + ' registro' + (manut.length!==1?'s':''));
+  set('fin-nova-qt',  nova.length  + ' registro' + (nova.length!==1?'s':''));
+  set('fin-periodo',  finMes ? 'Período: ' + monthLabel(finMes) : 'Manutenção + Nova Locação');
+
+  if (!fin.length) {
+    document.getElementById('finTableWrap').innerHTML =
+      '<div class="state-wrap">Nenhum registro para o período selecionado.</div>';
+    return;
+  }
+
+  document.getElementById('finTableWrap').innerHTML = `
+    <div class="table-wrap"><table>
+      <thead><tr><th>Tipo</th><th>Responsável</th><th>Inquilino</th><th>Condomínio</th><th>Status</th><th>Valor do Serviço</th><th>Valor Cobrado</th><th>Lucro Real</th><th>Data Início</th></tr></thead>
+      <tbody>${fin.map(r => {
+        const lucro = parseBRL(r['Lucro real ']);
+        return `<tr>
+          <td>${tipoTag(r['Tarefa'])}</td>
+          <td><span class="resp-badge">${r['Responsavel']||'—'}</span></td>
+          <td><div class="td-name">${r['Inquilino']||'—'}</div><div class="td-sub">${r['Proprietario']||''}</div></td>
+          <td style="font-size:12px">${r['Condominio']||'—'}</td>
+          <td>${statusTag(r['Status'])}</td>
+          <td style="font-size:12px">${r['valor do serviço']||'—'}</td>
+          <td style="font-size:12px">${r['valor cobrado cliente']||'—'}</td>
+          <td style="font-weight:700;color:${lucro>0?'var(--green)':lucro<0?'var(--red)':'var(--muted)'}">${fmtBRL(lucro)}</td>
+          <td style="font-size:12px;white-space:nowrap">${r['Data de início']||'—'}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>
+    <div class="table-footer">${fin.length} registro${fin.length!==1?'s':''}</div>`;
+}
+
+function renderLucroMesChart() {
+  const allFin = data.filter(r => r['Tarefa']==='Manutenção' || r['Tarefa']==='Nova Locação');
+  const months = [...new Set(allFin.map(r => monthKey(r['Data de início'])).filter(Boolean))]
+    .sort((a,b) => { const [ma,ya] = a.split('/'), [mb,yb] = b.split('/'); return (ya-yb)||(ma-mb); });
+
+  if (!months.length) return;
+
+  const manutData = months.map(m =>
+    allFin.filter(r => r['Tarefa']==='Manutenção' && monthKey(r['Data de início'])===m)
+          .reduce((s,r) => s + parseBRL(r['Lucro real ']), 0));
+  const novaData = months.map(m =>
+    allFin.filter(r => r['Tarefa']==='Nova Locação' && monthKey(r['Data de início'])===m)
+          .reduce((s,r) => s + parseBRL(r['Lucro real ']), 0));
+
+  if (chartLucroMes) chartLucroMes.destroy();
+  chartLucroMes = new Chart(document.getElementById('chartLucroMes'), {
+    type: 'bar',
+    data: {
+      labels: months.map(monthLabel),
+      datasets: [
+        { label:'Manutenção',   data:manutData, backgroundColor:'rgba(79,70,229,.85)',  borderRadius:6, borderSkipped:false },
+        { label:'Nova Locação', data:novaData,  backgroundColor:'rgba(16,185,129,.85)', borderRadius:6, borderSkipped:false }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'bottom', labels:{ font:{ size:11 }, padding:14 } } },
+      scales:{
+        y:{ grid:{ color:'#f0f1f8' }, ticks:{ callback: v => fmtBRL(v) } },
+        x:{ grid:{ display:false } }
+      }
+    }
+  });
+}
+
+// ── CONFIGURAÇÕES ─────────────────────────────────────────────────────
+function renderSettings() {
+  const s = getSettings();
+  document.getElementById('cfgName').value    = s.dashName || '';
+  document.getElementById('cfgLogoUrl').value = s.logoUrl  || '';
+  updateLogoPreview(s.logoUrl);
+  renderUsers();
+
+  document.getElementById('cfgLogoUrl').addEventListener('input', () => updateLogoPreview(document.getElementById('cfgLogoUrl').value));
+  document.getElementById('cfgLogoFile').addEventListener('change', function() {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('cfgLogoUrl').value = e.target.result;
+      updateLogoPreview(e.target.result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function updateLogoPreview(src) {
+  const box = document.getElementById('prevBox');
+  box.innerHTML = src ? `<img src="${src}" onerror="this.parentElement.textContent='🏠'" style="width:100%;height:100%;object-fit:cover;border-radius:10px">` : '🏠';
+}
+
+function saveIdentity() {
+  const name    = document.getElementById('cfgName').value.trim() || 'LocaFácil';
+  const logoUrl = document.getElementById('cfgLogoUrl').value.trim();
+  saveCfg({ dashName:name, logoUrl });
+  applySettings();
+  if (logoUrl) setLogoImg(logoUrl);
+  else { ['sideLogoIcon','loginLogoIcon'].forEach(id => { document.getElementById(id).innerHTML = '🏠'; }); }
+  showToast('Identidade salva!');
+}
+
+function renderUsers() {
+  const session = getSession();
+  const users   = getUsers();
+  document.getElementById('usersTbody').innerHTML = users.map((u,i) => `
+    <tr>
+      <td class="td-name">${u.name}</td>
+      <td style="font-size:12px;color:var(--muted)">${u.username}</td>
+      <td><span class="role-badge ${u.role==='master'?'role-master':'role-admin'}">${u.role==='master'?'Master':'Administrativo'}</span></td>
+      <td>${u.username===session?.username ? '<span style="font-size:11px;color:var(--muted)">Você</span>' :
+        `<button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="deleteUser(${i})">Excluir</button>`}</td>
+    </tr>`).join('');
+}
+
+function toggleAddUser() {
+  const f = document.getElementById('addUserForm');
+  f.style.display = f.style.display === 'none' ? 'grid' : 'none';
+  document.getElementById('addUserErr').style.display = 'none';
+}
+
+function createUser() {
+  const name = document.getElementById('newName').value.trim();
+  const user = document.getElementById('newUser').value.trim();
+  const pass = document.getElementById('newPass').value;
+  const role = document.getElementById('newRole').value;
+  const err  = document.getElementById('addUserErr');
+
+  if (!name || !user || !pass) { err.textContent = 'Preencha todos os campos.'; err.style.display='block'; return; }
+  const users = getUsers();
+  if (users.find(u => u.username === user)) { err.textContent = 'Este login já existe.'; err.style.display='block'; return; }
+
+  users.push({ username:user, password:pass, name, role });
+  saveUsers(users);
+  err.style.display = 'none';
+  ['newName','newUser','newPass'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('addUserForm').style.display = 'none';
+  renderUsers();
+  showToast('Usuário criado!');
+}
+
+function deleteUser(idx) {
+  const users = getUsers();
+  const masters = users.filter(u => u.role === 'master');
+  if (users[idx].role === 'master' && masters.length <= 1) {
+    alert('É necessário manter pelo menos um usuário Master.');
+    return;
+  }
+  if (!confirm(`Excluir o usuário "${users[idx].name}"?`)) return;
+  users.splice(idx, 1);
+  saveUsers(users);
+  renderUsers();
+  showToast('Usuário excluído.');
+}
+
+function showToast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    Object.assign(t.style, { position:'fixed', bottom:'24px', right:'24px', background:'#1e2135', color:'#fff', padding:'10px 18px', borderRadius:'8px', fontSize:'13px', fontWeight:'600', zIndex:'9999', opacity:'0', transition:'opacity .3s' });
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.opacity = '0', 2500);
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────
+const esc = s => (s||'').replace(/"/g,"'");
+
+function tipoTag(t) {
+  const m = { 'Concluido':'t-concluido','Rescisão':'t-rescisao','Negociação':'t-negociacao','Aditivo':'t-aditivo','Manutenção':'t-manutencao','Nova Locação':'t-nova','Boas Vindas':'t-boasvindas' };
+  return `<span class="tarefa-type ${m[t]||'t-outros'}">${t||'—'}</span>`;
+}
+function prioTag(p) {
+  if (!p || p==='ok') return `<span class="prio-badge prio-ok">✔ OK</span>`;
+  const n = p.replace('Prioridade ','');
+  return `<span class="prio-badge prio-${n}">P${n}</span>`;
+}
+function statusTag(s) {
+  const m = { 'Concluída':'s-concluida','Em execução':'s-execucao','Não iniciada':'s-nao-iniciada','Em Contrato':'s-contrato' };
+  return `<span class="status ${m[s]||'s-nao-iniciada'}">${s||'—'}</span>`;
+}
+
+// ── FILTERS ───────────────────────────────────────────────────────────
+function setupFilters() {
+  [['fTipo','fTipo'],['fStatus','fStatus'],['fResp','fResp']].forEach(([id]) => {
+    document.getElementById(id).addEventListener('click', e => {
+      const chip = e.target.closest('.filter-chip');
+      if (!chip) return;
+      document.querySelectorAll(`#${id} .filter-chip`).forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      if (id==='fTipo')   fTipo   = chip.dataset.v;
+      if (id==='fStatus') fStatus = chip.dataset.v;
+      if (id==='fResp')   fResp   = chip.dataset.v;
+      renderTarefas();
+    });
+  });
+}
+
+// ── BOOT ─────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  setupFilters();
+
+  // Apply saved settings on login screen
+  const s = getSettings();
+  if (s.dashName) {
+    document.getElementById('loginDashName').textContent = s.dashName;
+    document.title = s.dashName;
+  }
+  if (s.logoUrl) {
+    setLogoImg(s.logoUrl);
+  }
+
+  // Auto-login if session exists
+  const session = getSession();
+  if (session) {
+    document.getElementById('loginOverlay').style.display = 'none';
+    initDashboard();
+  }
+});
+</script>
+</body>
+</html>
