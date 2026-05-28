@@ -247,6 +247,10 @@
     <div class="nav-item" data-page="financeiro" onclick="goTo(this,'financeiro')">
       <span class="icon">💰</span><span>Financeiro</span>
     </div>
+    <div class="nav-item" id="navDistrib" data-page="distribuicao" onclick="goTo(this,'distribuicao')">
+      <span class="icon">💸</span><span>Distribuição</span>
+      <span class="badge" id="badgeDistrib" style="display:none">0</span>
+    </div>
     <div class="nav-item" data-page="agenda" onclick="goTo(this,'agenda')">
       <span class="icon">📅</span><span>Agenda</span>
     </div>
@@ -393,6 +397,62 @@
   </div>
 
   <!-- CONFIGURAÇÕES -->
+  <!-- ── DISTRIBUIÇÃO ── -->
+  <div id="page-distribuicao" class="page">
+
+    <div class="kpi-grid" style="margin-bottom:20px">
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:var(--yellow-light)">⏳</div>
+        <div>
+          <div class="kpi-label">A Distribuir</div>
+          <div class="kpi-value" id="dist-pendente">—</div>
+          <div class="kpi-sub" id="dist-pendente-qt">aguardando</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:var(--green-light)">✅</div>
+        <div>
+          <div class="kpi-label">Já Distribuído</div>
+          <div class="kpi-value" id="dist-done">—</div>
+          <div class="kpi-sub" id="dist-done-qt">registros</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:var(--primary-light)">📊</div>
+        <div>
+          <div class="kpi-label">Total com Lucro</div>
+          <div class="kpi-value" id="dist-total">—</div>
+          <div class="kpi-sub" id="dist-total-qt">registros</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-body" style="padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:12px;font-weight:600;color:var(--muted)">Exibir:</span>
+          <div id="distFilterChips" style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="filter-chip active" data-v="todos">Todos</span>
+            <span class="filter-chip" data-v="pendente">⏳ A Distribuir</span>
+            <span class="filter-chip" data-v="distribuido">✅ Já Distribuído</span>
+          </div>
+        </div>
+        <button class="btn" style="margin-left:auto;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 14px;font-size:12px" onclick="reloadDistrib()">🔄 Atualizar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">💸 Lucros para Distribuição</span>
+        <span style="font-size:11px;color:var(--muted)" id="dist-sync-status"></span>
+      </div>
+      <div id="distTableWrap">
+        <div class="state-wrap">Carregando...</div>
+      </div>
+    </div>
+
+  </div>
+
   <div id="page-configuracoes" class="page">
 
     <div class="settings-section">
@@ -423,6 +483,72 @@
           <div>
             <button class="btn btn-primary" onclick="saveIdentity()">Salvar Identidade</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="card">
+        <div class="card-header"><span class="card-title">☁️ Sincronização da Distribuição</span></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">URL do Google Apps Script</label>
+            <input class="form-input" id="cfgScript" type="text" placeholder="https://script.google.com/macros/s/.../exec" />
+            <span class="form-hint">Cola aqui o link do script para salvar dados de distribuição em todos os dispositivos. <a id="distScriptHelp" href="#" style="color:var(--primary);text-decoration:none" onclick="showScriptModal();return false">Como configurar →</a></span>
+          </div>
+          <div>
+            <button class="btn btn-primary" onclick="saveScriptUrl()">Salvar URL</button>
+            <button class="btn" style="margin-left:8px;background:var(--bg);border:1px solid var(--border);color:var(--text)" onclick="testScriptUrl()">Testar conexão</button>
+          </div>
+          <div id="scriptTestResult" style="margin-top:8px;font-size:12px;display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal com código Apps Script -->
+    <div id="scriptModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:16px;padding:28px;max-width:640px;width:90%;max-height:80vh;overflow-y:auto;position:relative">
+        <button onclick="hideScriptModal()" style="position:absolute;top:12px;right:16px;border:none;background:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:12px">Como configurar o Apps Script</h3>
+        <ol style="font-size:13px;color:var(--text);line-height:1.8;padding-left:18px;margin-bottom:16px">
+          <li>Abra a planilha do Google Sheets</li>
+          <li>Clique em <strong>Extensões → Apps Script</strong></li>
+          <li>Apague o código existente e cole o código abaixo</li>
+          <li>Clique em <strong>Salvar</strong> (ícone de disquete)</li>
+          <li>Clique em <strong>Implantar → Nova implantação</strong></li>
+          <li>Tipo: <strong>App da Web</strong> | Executar como: <strong>Eu</strong> | Acesso: <strong>Qualquer pessoa</strong></li>
+          <li>Clique em <strong>Implantar</strong> e copie a URL gerada</li>
+          <li>Cole a URL no campo acima e clique em Salvar</li>
+        </ol>
+        <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px">Código para copiar:</label>
+        <textarea readonly onclick="this.select()" style="width:100%;height:220px;font-family:monospace;font-size:11px;border:1px solid var(--border);border-radius:8px;padding:10px;resize:none;color:var(--text);background:var(--bg)">const SHEET_NAME = 'Distribuicoes';
+function doGet(e) {
+  const action = (e.parameter||{}).action || 'get';
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SHEET_NAME);
+  if (!sh) { sh = ss.insertSheet(SHEET_NAME); sh.appendRow(['ID','Data','Por']); }
+  if (action === 'get') {
+    const rows = sh.getDataRange().getValues().slice(1);
+    const out = {};
+    rows.forEach(r => { if (r[0]) out[String(r[0])] = { date: r[1], by: r[2] }; });
+    return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+  }
+  const id = e.parameter.id || '';
+  if (action === 'mark') {
+    const rows = sh.getDataRange().getValues();
+    let found = -1;
+    for (let i = 1; i < rows.length; i++) { if (String(rows[i][0]) === id) { found = i+1; break; } }
+    if (found > 0) sh.getRange(found,1,1,3).setValues([[id, e.parameter.date||'', e.parameter.by||'']]);
+    else sh.appendRow([id, e.parameter.date||'', e.parameter.by||'']);
+  }
+  if (action === 'unmark') {
+    const rows = sh.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) { if (String(rows[i][0]) === id) { sh.deleteRow(i+1); break; } }
+  }
+  return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);
+}</textarea>
+        <div style="margin-top:12px;text-align:right">
+          <button class="btn btn-primary" onclick="hideScriptModal()">Fechar</button>
         </div>
       </div>
     </div>
@@ -474,11 +600,12 @@
 const CSV_URL   = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQzYS97vjuiIG8uBk_oSvsLi0AEVkSgr2cKsPY1d-XN5U6GcV8UA88Xf0mRCScaY7m4JRug2QqiztXw/pub?gid=1911345035&single=true&output=csv';
 const SHEET_ID  = '14A_cjqesyJpFqMuVryAwNMDEXViG98yHQUSjn5spKB8';
 const SHEET_GID = '1911345035';
-const PAGE_TITLES = { overview:'Visão Geral', tarefas:'Tarefas', contratos:'Contratos', financeiro:'Financeiro', agenda:'Agenda', configuracoes:'Configurações' };
+const PAGE_TITLES = { overview:'Visão Geral', tarefas:'Tarefas', contratos:'Contratos', financeiro:'Financeiro', distribuicao:'Distribuição', agenda:'Agenda', configuracoes:'Configurações' };
 
 // ── STATE ─────────────────────────────────────────────────────────────
 let data = [];
-let fTipo = '', fStatus = '', fResp = '', finMes = '';
+let fTipo = '', fStatus = '', fResp = '', finMes = '', distribFilter = 'todos';
+let distribData = {};
 let chartTipo, chartStatus, chartLucroMes;
 
 // ── STORAGE HELPERS ───────────────────────────────────────────────────
@@ -501,7 +628,7 @@ function saveUsers(u)  {
   const extras = u.filter(x => !DEFAULT_USERS.find(d => d.username === x.username));
   localStorage.setItem('loca_users', JSON.stringify(extras));
 }
-function getSettings() { try { return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem('loca_cfg') || '{}') }; } catch(e) { return DEFAULT_SETTINGS; } }
+function getSettings() { try { const s = { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem('loca_cfg') || '{}') }; if (!s.appsScriptUrl) s.appsScriptUrl = ''; return s; } catch(e) { return DEFAULT_SETTINGS; } }
 function saveCfg(s)    { localStorage.setItem('loca_cfg', JSON.stringify(s)); }
 function getSession()  { try { return JSON.parse(sessionStorage.getItem('loca_session')); } catch(e) { return null; } }
 function setSession(u) { sessionStorage.setItem('loca_session', JSON.stringify({ username:u.username, name:u.name, role:u.role })); }
@@ -541,6 +668,7 @@ function goTo(el, page) {
   document.getElementById('page-' + page).classList.add('active');
   document.getElementById('headerTitle').textContent = PAGE_TITLES[page] || page;
   if (page === 'financeiro') renderFinanceiro();
+  if (page === 'distribuicao') renderDistribuicao();
   if (page === 'configuracoes') renderSettings();
 }
 
@@ -577,9 +705,10 @@ function initDashboard() {
   document.getElementById('sideName').textContent   = session.name;
   document.getElementById('sideRole').textContent   = session.role === 'master' ? 'Master' : 'Administrativo';
 
-  // Hide Configurações for non-master
+  // Hide master-only pages for non-master
   if (session.role !== 'master') {
     document.getElementById('navConfig').style.display = 'none';
+    document.getElementById('navDistrib').style.display = 'none';
   }
 
   loadData();
@@ -918,11 +1047,198 @@ function renderLucroMesChart() {
   });
 }
 
+// ── DISTRIBUIÇÃO ──────────────────────────────────────────────────────
+
+function itemKey(r) {
+  return [r['Tarefa']||'', r['Inquilino']||'', r['Data de início']||'', r['valor cobrado cliente']||''].join('|');
+}
+
+async function loadDistribData() {
+  const s = getSettings();
+  if (s.appsScriptUrl) {
+    try {
+      const res = await fetch(s.appsScriptUrl + '?action=get&t=' + Date.now());
+      if (res.ok) {
+        distribData = await res.json();
+        localStorage.setItem('loca_distrib', JSON.stringify(distribData));
+        const el = document.getElementById('dist-sync-status');
+        if (el) el.textContent = '☁️ Sincronizado ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+        return;
+      }
+    } catch(e) {}
+  }
+  try { distribData = JSON.parse(localStorage.getItem('loca_distrib') || '{}'); } catch(e) { distribData = {}; }
+  const el = document.getElementById('dist-sync-status');
+  if (el) el.textContent = s.appsScriptUrl ? '⚠️ Offline — usando dados locais' : '💾 Dados locais (configure URL para sincronizar)';
+}
+
+async function setDistribItem(key, distributed) {
+  const session = getSession();
+  const by = session ? session.name : '?';
+  const now = new Date().toLocaleDateString('pt-BR');
+  if (distributed) {
+    distribData[key] = { date: now, by };
+  } else {
+    delete distribData[key];
+  }
+  localStorage.setItem('loca_distrib', JSON.stringify(distribData));
+
+  const s = getSettings();
+  if (s.appsScriptUrl) {
+    const action = distributed ? 'mark' : 'unmark';
+    const url = s.appsScriptUrl + '?action=' + action
+      + '&id=' + encodeURIComponent(key)
+      + '&date=' + encodeURIComponent(now)
+      + '&by=' + encodeURIComponent(by);
+    try { await fetch(url); } catch(e) {}
+  }
+}
+
+async function toggleDistrib(key) {
+  const isDone = !!distribData[key];
+  await setDistribItem(key, !isDone);
+  drawDistribTable();
+  updateDistribBadge();
+}
+
+async function reloadDistrib() {
+  document.getElementById('dist-sync-status').textContent = 'Atualizando...';
+  await loadDistribData();
+  drawDistribTable();
+}
+
+function updateDistribBadge() {
+  const allFin = data.filter(r => r['Tarefa']==='Manutenção' || r['Tarefa']==='Nova Locação' || r['Tarefa']==='Rescisão');
+  const positivos = allFin.filter(r => calcLucro(r) > 0);
+  const pendentes = positivos.filter(r => !distribData[itemKey(r)]).length;
+  const badge = document.getElementById('badgeDistrib');
+  if (badge) { badge.textContent = pendentes; badge.style.display = pendentes > 0 ? '' : 'none'; }
+}
+
+function drawDistribTable() {
+  const allFin = data.filter(r => r['Tarefa']==='Manutenção' || r['Tarefa']==='Nova Locação' || r['Tarefa']==='Rescisão');
+  const positivos = allFin.filter(r => calcLucro(r) > 0);
+
+  const pendentes   = positivos.filter(r => !distribData[itemKey(r)]);
+  const distribuidos = positivos.filter(r =>  distribData[itemKey(r)]);
+
+  const totalPend = pendentes.reduce((s,r) => s + calcLucro(r), 0);
+  const totalDone = distribuidos.reduce((s,r) => s + calcLucro(r), 0);
+  const totalAll  = positivos.reduce((s,r) => s + calcLucro(r), 0);
+
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('dist-pendente',    fmtBRL(totalPend));
+  set('dist-pendente-qt', pendentes.length + ' registro' + (pendentes.length!==1?'s':''));
+  set('dist-done',        fmtBRL(totalDone));
+  set('dist-done-qt',     distribuidos.length + ' registro' + (distribuidos.length!==1?'s':''));
+  set('dist-total',       fmtBRL(totalAll));
+  set('dist-total-qt',    positivos.length + ' registro' + (positivos.length!==1?'s':''));
+
+  let lista = positivos;
+  if (distribFilter === 'pendente')   lista = pendentes;
+  if (distribFilter === 'distribuido') lista = distribuidos;
+
+  const wrap = document.getElementById('distTableWrap');
+  if (!lista.length) {
+    wrap.innerHTML = '<div class="state-wrap">Nenhum registro para exibir.</div>';
+    updateDistribBadge();
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th>Tipo</th><th>Responsável</th><th>Inquilino</th><th>Condomínio</th>
+        <th>Lucro Real</th><th>Data Início</th><th>Status</th><th>Ação</th>
+      </tr></thead>
+      <tbody>${lista.map(r => {
+        const key = itemKey(r);
+        const info = distribData[key];
+        const lucro = calcLucro(r);
+        const isDone = !!info;
+        return `<tr style="${isDone ? 'opacity:.65' : ''}">
+          <td>${tipoTag(r['Tarefa'])}</td>
+          <td><span class="resp-badge">${r['Responsavel']||'—'}</span></td>
+          <td><div class="td-name">${r['Inquilino']||'—'}</div><div class="td-sub">${r['Proprietario']||''}</div></td>
+          <td style="font-size:12px">${r['Condominio']||'—'}</td>
+          <td style="font-weight:700;color:var(--green)">${fmtBRL(lucro)}</td>
+          <td style="font-size:12px;white-space:nowrap">${r['Data de início']||'—'}</td>
+          <td>${isDone
+            ? `<span style="background:var(--green-light);color:#065f46;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700">✅ Distribuído</span><div style="font-size:10px;color:var(--muted);margin-top:2px">${info.date||''} por ${info.by||''}</div>`
+            : `<span style="background:var(--yellow-light);color:#92400e;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700">⏳ Pendente</span>`}
+          </td>
+          <td>
+            <button onclick="toggleDistrib(${JSON.stringify(key)})"
+              style="padding:5px 12px;font-size:11px;font-weight:700;border:none;border-radius:6px;cursor:pointer;
+              background:${isDone ? 'var(--red-light)' : 'var(--green-light)'};
+              color:${isDone ? 'var(--red)' : '#065f46'}">
+              ${isDone ? '↩ Desfazer' : '✅ Marcar'}
+            </button>
+          </td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>
+    <div class="table-footer">${lista.length} registro${lista.length!==1?'s':''}</div>`;
+  updateDistribBadge();
+}
+
+async function renderDistribuicao() {
+  if (!data.length) return;
+  await loadDistribData();
+  drawDistribTable();
+
+  // Wire filter chips
+  const chips = document.getElementById('distFilterChips');
+  if (chips && !chips._bound) {
+    chips._bound = true;
+    chips.onclick = e => {
+      const chip = e.target.closest('.filter-chip');
+      if (!chip) return;
+      chips.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      distribFilter = chip.dataset.v;
+      drawDistribTable();
+    };
+  }
+}
+
+// ── APPS SCRIPT CONFIG ────────────────────────────────────────────────
+
+function saveScriptUrl() {
+  const url = document.getElementById('cfgScript').value.trim();
+  saveCfg({ appsScriptUrl: url });
+  showToast(url ? 'URL salva! Distribua para sincronizar.' : 'URL removida.');
+}
+
+async function testScriptUrl() {
+  const url = document.getElementById('cfgScript').value.trim();
+  const res = document.getElementById('scriptTestResult');
+  res.style.display = 'block';
+  res.style.color = 'var(--muted)';
+  res.textContent = 'Testando conexão...';
+  if (!url) { res.style.color = 'var(--red)'; res.textContent = '⚠️ Coloque a URL primeiro.'; return; }
+  try {
+    const r = await fetch(url + '?action=get&t=' + Date.now());
+    if (r.ok) { res.style.color = 'var(--green)'; res.textContent = '✅ Conexão OK! Script funcionando corretamente.'; }
+    else { res.style.color = 'var(--red)'; res.textContent = '❌ Erro HTTP ' + r.status + ' — verifique o script.'; }
+  } catch(e) { res.style.color = 'var(--red)'; res.textContent = '❌ Falha na conexão: ' + e.message; }
+}
+
+function showScriptModal() {
+  const m = document.getElementById('scriptModal');
+  m.style.display = 'flex';
+}
+
+function hideScriptModal() {
+  document.getElementById('scriptModal').style.display = 'none';
+}
+
 // ── CONFIGURAÇÕES ─────────────────────────────────────────────────────
 function renderSettings() {
   const s = getSettings();
   document.getElementById('cfgName').value    = s.dashName || '';
   document.getElementById('cfgLogoUrl').value = s.logoUrl  || '';
+  document.getElementById('cfgScript').value  = s.appsScriptUrl || '';
   updateLogoPreview(s.logoUrl);
   renderUsers();
 
