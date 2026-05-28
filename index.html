@@ -1145,13 +1145,15 @@ function drawDistribTable() {
     return;
   }
 
+  window._distribKeys = lista.map(r => itemKey(r));
+
   wrap.innerHTML = `
     <div class="table-wrap"><table>
       <thead><tr>
         <th>Tipo</th><th>Responsável</th><th>Inquilino</th><th>Condomínio</th>
         <th>Lucro Real</th><th>Data Início</th><th>Status</th><th>Ação</th>
       </tr></thead>
-      <tbody>${lista.map(r => {
+      <tbody>${lista.map((r, idx) => {
         const key = itemKey(r);
         const info = distribData[key];
         const lucro = calcLucro(r);
@@ -1168,7 +1170,7 @@ function drawDistribTable() {
             : `<span style="background:var(--yellow-light);color:#92400e;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700">⏳ Pendente</span>`}
           </td>
           <td>
-            <button onclick="toggleDistrib(${JSON.stringify(key)})"
+            <button onclick="toggleDistrib(window._distribKeys[${idx}])"
               style="padding:5px 12px;font-size:11px;font-weight:700;border:none;border-radius:6px;cursor:pointer;
               background:${isDone ? 'var(--red-light)' : 'var(--green-light)'};
               color:${isDone ? 'var(--red)' : '#065f46'}">
