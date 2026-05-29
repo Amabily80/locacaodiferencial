@@ -600,6 +600,7 @@ function doGet(e) {
 const CSV_URL   = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQzYS97vjuiIG8uBk_oSvsLi0AEVkSgr2cKsPY1d-XN5U6GcV8UA88Xf0mRCScaY7m4JRug2QqiztXw/pub?gid=1911345035&single=true&output=csv';
 const SHEET_ID  = '14A_cjqesyJpFqMuVryAwNMDEXViG98yHQUSjn5spKB8';
 const SHEET_GID = '1911345035';
+const DISTRIB_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyeWWPmp5kvQzUf1vD8PEx1d9YVD3B8SZqHtdTKSoUVKNRpabBz8GlVkn_PxMpE2mqEXQ/exec';
 const PAGE_TITLES = { overview:'Visão Geral', tarefas:'Tarefas', contratos:'Contratos', financeiro:'Financeiro', distribuicao:'Distribuição', agenda:'Agenda', configuracoes:'Configurações' };
 
 // ── STATE ─────────────────────────────────────────────────────────────
@@ -1053,23 +1054,26 @@ function itemKey(r) {
   return [r['Tarefa']||'', r['Inquilino']||'', r['Data de início']||'', r['valor cobrado cliente']||''].join('|');
 }
 
-async function loadDistribData() {
+function getScriptUrl() {
   const s = getSettings();
-  if (s.appsScriptUrl) {
-    try {
-      const res = await fetch(s.appsScriptUrl + '?action=get&t=' + Date.now());
-      if (res.ok) {
-        distribData = await res.json();
-        localStorage.setItem('loca_distrib', JSON.stringify(distribData));
-        const el = document.getElementById('dist-sync-status');
-        if (el) el.textContent = '☁️ Sincronizado ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
-        return;
-      }
-    } catch(e) {}
-  }
+  return s.appsScriptUrl || DISTRIB_SCRIPT_URL;
+}
+
+async function loadDistribData() {
+  const url = getScriptUrl();
+  try {
+    const res = await fetch(url + '?action=get&t=' + Date.now());
+    if (res.ok) {
+      distribData = await res.json();
+      localStorage.setItem('loca_distrib', JSON.stringify(distribData));
+      const el = document.getElementById('dist-sync-status');
+      if (el) el.textContent = '☁️ Sincronizado ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+      return;
+    }
+  } catch(e) {}
   try { distribData = JSON.parse(localStorage.getItem('loca_distrib') || '{}'); } catch(e) { distribData = {}; }
   const el = document.getElementById('dist-sync-status');
-  if (el) el.textContent = s.appsScriptUrl ? '⚠️ Offline — usando dados locais' : '💾 Dados locais (configure URL para sincronizar)';
+  if (el) el.textContent = '⚠️ Offline — usando dados locais';
 }
 
 async function setDistribItem(key, distributed) {
@@ -1083,15 +1087,12 @@ async function setDistribItem(key, distributed) {
   }
   localStorage.setItem('loca_distrib', JSON.stringify(distribData));
 
-  const s = getSettings();
-  if (s.appsScriptUrl) {
-    const action = distributed ? 'mark' : 'unmark';
-    const url = s.appsScriptUrl + '?action=' + action
-      + '&id=' + encodeURIComponent(key)
-      + '&date=' + encodeURIComponent(now)
-      + '&by=' + encodeURIComponent(by);
-    try { await fetch(url); } catch(e) {}
-  }
+  const action = distributed ? 'mark' : 'unmark';
+  const url = getScriptUrl() + '?action=' + action
+    + '&id=' + encodeURIComponent(key)
+    + '&date=' + encodeURIComponent(now)
+    + '&by=' + encodeURIComponent(by);
+  try { await fetch(url); } catch(e) {}
 }
 
 async function toggleDistrib(key) {
