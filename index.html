@@ -1219,19 +1219,26 @@ async function tryFetchCSV(url) {
 }
 
 async function loadMetasData() {
-  // 1. GViz (funciona se a planilha for pública/publicada)
+  // 1. Apps Script (principal — acessa a planilha com credenciais do dono)
+  try {
+    const r = await fetch(DISTRIB_SCRIPT_URL + '?action=getLancamentos&t=' + Date.now());
+    if (r.ok) {
+      const data = await r.json();
+      if (Array.isArray(data) && data.length) { metasData = data; return true; }
+    }
+  } catch(e) {}
+
+  // 2. GViz fallback
   try {
     const rows = await fetchMetasViaGViz();
     if (rows && rows.length) { metasData = rows; return true; }
   } catch(e) {}
 
+  // 3. CSV fallbacks
   const csvUrls = [
-    METAS_CSV_URL,
-    METAS_CSV_BASE,
+    METAS_CSV_URL, METAS_CSV_BASE,
     'https://corsproxy.io/?' + encodeURIComponent(METAS_CSV_URL),
     'https://api.allorigins.win/raw?url=' + encodeURIComponent(METAS_CSV_URL),
-    'https://corsproxy.io/?' + encodeURIComponent(METAS_CSV_BASE),
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent(METAS_CSV_BASE),
   ];
   for (const url of csvUrls) {
     const rows = await tryFetchCSV(url);
