@@ -1262,9 +1262,9 @@ async function renderMetas() {
 }
 
 function drawMetas() {
-  // Filtra dados do Jeferson
+  // Filtra apenas lançamentos onde o Corretor Principal é o Jeferson
   const jefData = metasData.filter(r =>
-    String(r['CORRETOR PRINCIPAL'] || r['ANGARIADOR'] || '').toLowerCase().includes('jeferson')
+    String(r['CORRETOR PRINCIPAL'] || '').toLowerCase().includes('jeferson')
   );
 
   // Meses disponíveis nos dados (baseado em Cód Mês)
@@ -1345,7 +1345,10 @@ function drawMetas() {
 
   // Gráfico de evolução mensal
   const chartData = Array.from({length:12}, (_,i) => {
-    const m = jefData.filter(r => parseInt(r['Cód Mês']) === i+1);
+    const m = metasData.filter(r =>
+      String(r['CORRETOR PRINCIPAL'] || '').toLowerCase().includes('jeferson') &&
+      parseInt(r['Cód Mês']) === i+1
+    );
     return {
       ang:  m.filter(r => String(r['Finalidade']||'').trim() === 'Angariação').length,
       prop: m.filter(r => String(r['Finalidade']||'').trim() === 'Locação').length,
