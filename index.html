@@ -251,6 +251,9 @@
       <span class="icon">💸</span><span>Distribuição</span>
       <span class="badge" id="badgeDistrib" style="display:none">0</span>
     </div>
+    <div class="nav-item" id="navMetas" data-page="metas" onclick="goTo(this,'metas')">
+      <span class="icon">🎯</span><span>Metas</span>
+    </div>
     <div class="nav-item" data-page="agenda" onclick="goTo(this,'agenda')">
       <span class="icon">📅</span><span>Agenda</span>
     </div>
@@ -285,6 +288,7 @@
   <!-- VISÃO GERAL -->
   <div id="page-overview" class="page active">
     <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-icon" style="background:var(--green-light)">🏠</div><div><div class="kpi-label">Contratos Ativos</div><div class="kpi-value" id="ov-contratos">—</div><div class="kpi-sub" id="ov-contratos-sub" style="font-size:11px;color:var(--muted)"></div></div></div>
       <div class="kpi-card"><div class="kpi-icon" style="background:var(--primary-light)">📋</div><div><div class="kpi-label">Total Tarefas</div><div class="kpi-value" id="ov-total">—</div></div></div>
       <div class="kpi-card"><div class="kpi-icon" style="background:var(--yellow-light)">⚡</div><div><div class="kpi-label">Em Execução</div><div class="kpi-value" id="ov-exec">—</div></div></div>
       <div class="kpi-card"><div class="kpi-icon" style="background:var(--green-light)">✅</div><div><div class="kpi-label">Concluídas</div><div class="kpi-value" id="ov-conc">—</div></div></div>
@@ -299,6 +303,17 @@
     <div class="card" style="margin-bottom:24px">
       <div class="card-header"><span class="card-title">💰 Lucro Real por Mês — Manutenção &amp; Nova Locação</span></div>
       <div style="padding:20px"><div class="chart-wrap" style="height:240px"><canvas id="chartLucroMes"></canvas></div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header">
+        <span class="card-title">📤 Rescisões em Andamento</span>
+        <span class="badge" id="rescCount" style="background:var(--red);color:#fff;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">0</span>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Responsável</th><th>Inquilino</th><th>Condomínio</th><th>Status</th><th>Data Início</th><th>Assunto</th></tr></thead>
+        <tbody id="ovRescTbody"><tr><td colspan="6"><div class="state-wrap"><div class="spinner"></div></div></td></tr></tbody></table>
+      </div>
     </div>
 
     <div class="card">
@@ -397,6 +412,52 @@
   </div>
 
   <!-- CONFIGURAÇÕES -->
+  <!-- ── METAS ── -->
+  <div id="page-metas" class="page">
+    <div id="metasLoading" style="display:flex;align-items:center;justify-content:center;height:220px">
+      <div style="text-align:center"><div class="spinner"></div><div style="margin-top:12px;color:var(--muted);font-size:14px">Carregando dados de metas...</div></div>
+    </div>
+    <div id="metasContent" style="display:none">
+      <!-- Filtro de mês -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-body" style="padding:14px 20px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:600;color:var(--muted)">Mês:</span>
+          <div id="metasMesChips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+          <button onclick="reloadMetas()" style="margin-left:auto;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 14px;font-size:12px;border-radius:6px;cursor:pointer;font-weight:600">🔄 Atualizar</button>
+        </div>
+      </div>
+      <!-- Cabeçalho corretor + meta geral -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-body" style="padding:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="width:50px;height:50px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:22px;font-weight:900;flex-shrink:0">J</div>
+          <div>
+            <div style="font-size:17px;font-weight:800;color:var(--text)">Jeferson de Araujo Marques</div>
+            <div style="font-size:12px;color:var(--muted)">Corretor de Locação · Metas 2026</div>
+          </div>
+          <div style="margin-left:auto;text-align:center;padding:0 8px">
+            <div id="metaPercVal" style="font-size:42px;font-weight:900;line-height:1;color:var(--primary)">—</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Meta Geral do Mês</div>
+          </div>
+        </div>
+      </div>
+      <!-- KPI cards com progress bar -->
+      <div id="metasKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin-bottom:20px"></div>
+      <!-- Gráfico mensal -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><span class="card-title">📈 Evolução Mensal vs Meta</span></div>
+        <div style="padding:20px"><div class="chart-wrap" style="height:260px"><canvas id="chartMetas"></canvas></div></div>
+      </div>
+      <!-- Tabela de lançamentos -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📋 Lançamentos do Período</span>
+          <span style="font-size:12px;color:var(--muted)" id="metasTableCount"></span>
+        </div>
+        <div id="metasTableWrap"><div class="state-wrap">—</div></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── DISTRIBUIÇÃO ── -->
   <div id="page-distribuicao" class="page">
 
@@ -601,13 +662,19 @@ const CSV_URL   = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQzYS97vjuiIG
 const SHEET_ID  = '14A_cjqesyJpFqMuVryAwNMDEXViG98yHQUSjn5spKB8';
 const SHEET_GID = '1911345035';
 const DISTRIB_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyeWWPmp5kvQzUf1vD8PEx1d9YVD3B8SZqHtdTKSoUVKNRpabBz8GlVkn_PxMpE2mqEXQ/exec';
-const PAGE_TITLES = { overview:'Visão Geral', tarefas:'Tarefas', contratos:'Contratos', financeiro:'Financeiro', distribuicao:'Distribuição', agenda:'Agenda', configuracoes:'Configurações' };
+const BASE_CONTRATOS = 100;
+const BASE_DATE      = new Date(2026, 4, 30);
+const METAS_SHEET_ID = '108IEomNQTN6BR2Mvj1RkrDiXK56kq-DNiQ2QTfdx2w4';
+const METAS_GID      = '122887448';
+const METAS_TARGETS  = { ang: 2, prop: 5, loc: 5 };
+const METAS_WEIGHTS  = { ang: 0.30, prop: 0.05, loc: 0.65 };
+const PAGE_TITLES = { overview:'Visão Geral', tarefas:'Tarefas', contratos:'Contratos', financeiro:'Financeiro', metas:'Metas', distribuicao:'Distribuição', agenda:'Agenda', configuracoes:'Configurações' };
 
 // ── STATE ─────────────────────────────────────────────────────────────
-let data = [];
-let fTipo = '', fStatus = '', fResp = '', finMes = '', distribFilter = 'todos';
+let data = [], metasData = [];
+let fTipo = '', fStatus = '', fResp = '', finMes = '', distribFilter = 'todos', metasMes = '';
 let distribData = {};
-let chartTipo, chartStatus, chartLucroMes;
+let chartTipo, chartStatus, chartLucroMes, chartMetas;
 
 // ── STORAGE HELPERS ───────────────────────────────────────────────────
 const DEFAULT_USERS = [
@@ -670,6 +737,7 @@ function goTo(el, page) {
   document.getElementById('headerTitle').textContent = PAGE_TITLES[page] || page;
   if (page === 'financeiro') renderFinanceiro();
   if (page === 'distribuicao') renderDistribuicao();
+  if (page === 'metas') renderMetas();
   if (page === 'configuracoes') renderSettings();
 }
 
@@ -710,6 +778,7 @@ function initDashboard() {
   if (session.role !== 'master') {
     document.getElementById('navConfig').style.display = 'none';
     document.getElementById('navDistrib').style.display = 'none';
+    document.getElementById('navMetas').style.display = 'none';
   }
 
   loadData();
@@ -767,6 +836,7 @@ async function loadData() {
     updateKpis();
     renderCharts();
     renderLucroMesChart();
+    renderRescisoes();
     renderPrioTable();
     renderTarefas();
 
@@ -824,6 +894,12 @@ function splitLine(line) {
 }
 
 // ── KPIs ──────────────────────────────────────────────────────────────
+function parseDateBR(s) {
+  if (!s) return null;
+  const p = s.split('/');
+  return p.length >= 3 ? new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0])) : null;
+}
+
 function updateKpis() {
   set('ov-total', data.length);
   set('ov-exec',  cnt(r => r['Status']==='Em execução'));
@@ -831,6 +907,19 @@ function updateKpis() {
   set('ov-prio',  cnt(r => r['Prioridade']==='Prioridade 1'));
   set('ov-resc',  cnt(r => r['Tarefa']==='Rescisão' && r['Status']!=='Concluída'));
   set('ov-adit',  cnt(r => r['Tarefa']==='Aditivo'  && r['Status']!=='Concluída'));
+
+  // Contratos ativos: base 100 em 30/05/2026 + novas locações − rescisões após essa data
+  const novas = cnt(r => r['Tarefa']==='Nova Locação' && (parseDateBR(r['Data de início']) > BASE_DATE));
+  const resc  = cnt(r => r['Tarefa']==='Rescisão'    && (parseDateBR(r['Data de início']) > BASE_DATE));
+  const ativos = BASE_CONTRATOS + novas - resc;
+  set('ov-contratos', ativos);
+  const el = document.getElementById('ov-contratos-sub');
+  if (el) {
+    const parts = [];
+    if (novas > 0) parts.push(`+${novas} nova${novas>1?'s':''}`);
+    if (resc  > 0) parts.push(`−${resc} rescisão${resc>1?'ões':''}`);
+    el.textContent = parts.length ? parts.join(' · ') + ' após mai/26' : 'Base: 30/05/2026';
+  }
 }
 const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
 const cnt = fn => data.filter(fn).length;
@@ -860,6 +949,25 @@ function renderCharts() {
 }
 
 // ── PRIO TABLE (overview) ─────────────────────────────────────────────
+function renderRescisoes() {
+  const rows = data.filter(r => r['Tarefa']==='Rescisão' && r['Status']!=='Concluída');
+  const tb   = document.getElementById('ovRescTbody');
+  const badge = document.getElementById('rescCount');
+  if (badge) badge.textContent = rows.length;
+  if (!rows.length) {
+    tb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Nenhuma rescisão em andamento ✅</td></tr>';
+    return;
+  }
+  tb.innerHTML = rows.map(r => `<tr>
+    <td><span class="resp-badge">${r['Responsavel']||'—'}</span></td>
+    <td><div class="td-name">${r['Inquilino']||'—'}</div><div class="td-sub">${r['Proprietario']||''}</div></td>
+    <td style="font-size:12px">${r['Condominio']||'—'}</td>
+    <td>${statusTag(r['Status'])}</td>
+    <td style="font-size:12px;white-space:nowrap">${r['Data de início']||'—'}</td>
+    <td style="font-size:12px">${r['Assunto']||'—'}</td>
+  </tr>`).join('');
+}
+
 function renderPrioTable() {
   const rows = data.filter(r => r['Prioridade']==='Prioridade 1' && r['Status']!=='Concluída');
   const tb = document.getElementById('ovPrioTbody');
@@ -1046,6 +1154,218 @@ function renderLucroMesChart() {
       }
     }
   });
+}
+
+// ── METAS ─────────────────────────────────────────────────────────────
+
+function parseGVizDate(v) {
+  if (!v) return '';
+  const m = String(v).match(/Date\((\d+),(\d+),(\d+)\)/);
+  if (m) return new Date(+m[1], +m[2], +m[3]).toLocaleDateString('pt-BR');
+  return String(v);
+}
+
+function fetchMetasViaGViz() {
+  return new Promise((resolve, reject) => {
+    const cb = '_gvizM' + Date.now();
+    const timer = setTimeout(() => { cleanup(); reject(new Error('timeout')); }, 12000);
+    function cleanup() { clearTimeout(timer); delete window[cb]; const s = document.getElementById(cb); if (s) s.remove(); }
+    const url = `https://docs.google.com/spreadsheets/d/${METAS_SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${cb}&gid=${METAS_GID}`;
+    const script = document.createElement('script');
+    script.id = cb;
+    script.src = url;
+    script.onerror = () => { cleanup(); reject(new Error('script error')); };
+    document.head.appendChild(script);
+    window[cb] = function(resp) {
+      cleanup();
+      try {
+        const cols = resp.table.cols.map(c => c.label);
+        const rows = resp.table.rows
+          .filter(row => row.c && row.c.some(c => c && c.v !== null && c.v !== undefined && c.v !== ''))
+          .map(row => Object.fromEntries(cols.map((c, i) => {
+            const cell = row.c[i];
+            let val = cell ? cell.v : '';
+            if (val !== null && val !== undefined && String(val).match(/^Date\(/)) val = parseGVizDate(val);
+            return [c, val !== null && val !== undefined ? val : ''];
+          })));
+        resolve(rows.filter(r => r['CLIENTE'] || r['DATA']));
+      } catch(e) { reject(e); }
+    };
+  });
+}
+
+async function loadMetasData() {
+  try { metasData = await fetchMetasViaGViz(); return true; }
+  catch(e) { console.error('Metas fetch:', e); return false; }
+}
+
+async function reloadMetas() {
+  document.getElementById('metasLoading').style.display = 'flex';
+  document.getElementById('metasContent').style.display = 'none';
+  const ok = await loadMetasData();
+  document.getElementById('metasLoading').style.display = 'none';
+  document.getElementById('metasContent').style.display = '';
+  if (ok) drawMetas(); else document.getElementById('metasContent').innerHTML = '<div class="state-wrap">❌ Não foi possível carregar os dados. Verifique a conexão.</div>';
+}
+
+async function renderMetas() {
+  if (metasData.length) { drawMetas(); return; } // já carregado
+  await reloadMetas();
+}
+
+function drawMetas() {
+  // Filtra dados do Jeferson
+  const jefData = metasData.filter(r =>
+    String(r['CORRETOR PRINCIPAL'] || r['ANGARIADOR'] || '').toLowerCase().includes('jeferson')
+  );
+
+  // Meses disponíveis nos dados (baseado em Cód Mês)
+  const nomeMes = ['','JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+  const shortMes = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const mesesDisp = [...new Set(metasData.map(r => parseInt(r['Cód Mês'])).filter(m => m >= 1 && m <= 12))].sort((a,b) => a-b);
+
+  // Mês padrão = mês atual
+  const curMes = new Date().getMonth() + 1;
+  if (!metasMes || !mesesDisp.includes(parseInt(metasMes))) {
+    metasMes = String(mesesDisp.includes(curMes) ? curMes : mesesDisp[mesesDisp.length - 1] || curMes);
+  }
+  const selMes = parseInt(metasMes);
+
+  // Chips de mês
+  const chipsEl = document.getElementById('metasMesChips');
+  if (chipsEl) chipsEl.innerHTML = mesesDisp.map(m =>
+    `<span class="filter-chip${m===selMes?' active':''}" onclick="setMetasMes(${m})">${shortMes[m]}</span>`
+  ).join('');
+
+  // Dados do mês selecionado
+  const jefMes = jefData.filter(r => parseInt(r['Cód Mês']) === selMes);
+  const angCount  = jefMes.filter(r => String(r['Finalidade']||'').trim() === 'Angariação').length;
+  const propCount = jefMes.filter(r => String(r['Finalidade']||'').trim() === 'Locação').length;
+  const locCount  = jefMes.filter(r => String(r['STATUS']||'').toUpperCase().trim() === 'FECHADO').length;
+  const vgvTotal  = jefMes.reduce((s, r) => {
+    const v = parseFloat(String(r['VGV']||'0').replace(/[^0-9,]/g,'').replace(',','.'));
+    return s + (isNaN(v) ? 0 : v);
+  }, 0);
+
+  // % meta geral ponderada
+  const angP  = Math.min(angCount  / METAS_TARGETS.ang,  1);
+  const propP = Math.min(propCount / METAS_TARGETS.prop, 1);
+  const locP  = Math.min(locCount  / METAS_TARGETS.loc,  1);
+  const geral = Math.round((angP * METAS_WEIGHTS.ang + propP * METAS_WEIGHTS.prop + locP * METAS_WEIGHTS.loc) * 100);
+  const metaColor = geral >= 100 ? 'var(--green)' : geral >= 70 ? 'var(--yellow)' : 'var(--red)';
+
+  const percEl = document.getElementById('metaPercVal');
+  if (percEl) { percEl.textContent = geral + '%'; percEl.style.color = metaColor; }
+
+  // KPI cards com progress bar
+  const kpisEl = document.getElementById('metasKpis');
+  if (kpisEl) {
+    const cards = [
+      { icon:'🏠', label:'Angariações', val:angCount,  target:METAS_TARGETS.ang,  perc:Math.round(angP*100),  bg:'var(--blue-light)' },
+      { icon:'📋', label:'Propostas',   val:propCount, target:METAS_TARGETS.prop, perc:Math.round(propP*100), bg:'var(--primary-light)' },
+      { icon:'✅', label:'Locações',    val:locCount,  target:METAS_TARGETS.loc,  perc:Math.round(locP*100),  bg:'var(--green-light)' },
+    ];
+    kpisEl.innerHTML = cards.map(k => {
+      const barColor = k.perc >= 100 ? 'var(--green)' : k.perc >= 60 ? 'var(--yellow)' : 'var(--primary)';
+      const badgeBg  = k.perc >= 100 ? 'var(--green-light)' : k.perc >= 60 ? 'var(--yellow-light)' : 'var(--red-light)';
+      const badgeClr = k.perc >= 100 ? '#065f46' : k.perc >= 60 ? '#92400e' : 'var(--red)';
+      return `<div class="kpi-card" style="flex-direction:column;align-items:stretch;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="kpi-icon" style="background:${k.bg}">${k.icon}</div>
+          <div style="flex:1">
+            <div class="kpi-label">${k.label}</div>
+            <div style="display:flex;align-items:baseline;gap:4px">
+              <span class="kpi-value">${k.val}</span>
+              <span style="color:var(--muted);font-size:13px">/ ${k.target}</span>
+            </div>
+          </div>
+          <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;background:${badgeBg};color:${badgeClr}">${k.perc}%</span>
+        </div>
+        <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden">
+          <div style="height:6px;border-radius:4px;background:${barColor};width:${Math.min(k.perc,100)}%;transition:width .6s"></div>
+        </div>
+      </div>`;
+    }).join('') + `<div class="kpi-card">
+      <div class="kpi-icon" style="background:var(--green-light)">💰</div>
+      <div>
+        <div class="kpi-label">VGV do Período</div>
+        <div class="kpi-value" style="font-size:18px">R$ ${vgvTotal.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+        <div class="kpi-sub" style="font-size:11px;color:var(--muted)">${locCount} fechamento${locCount!==1?'s':''}</div>
+      </div>
+    </div>`;
+  }
+
+  // Gráfico de evolução mensal
+  const chartData = Array.from({length:12}, (_,i) => {
+    const m = jefData.filter(r => parseInt(r['Cód Mês']) === i+1);
+    return {
+      ang:  m.filter(r => String(r['Finalidade']||'').trim() === 'Angariação').length,
+      prop: m.filter(r => String(r['Finalidade']||'').trim() === 'Locação').length,
+      loc:  m.filter(r => String(r['STATUS']||'').toUpperCase().trim() === 'FECHADO').length,
+    };
+  });
+  if (chartMetas) chartMetas.destroy();
+  const ctx = document.getElementById('chartMetas');
+  if (ctx) {
+    chartMetas = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: shortMes.slice(1),
+        datasets: [
+          { label:`Angariações (meta ${METAS_TARGETS.ang})`, data: chartData.map(d=>d.ang),  backgroundColor:'rgba(59,130,246,.7)',  borderRadius:4 },
+          { label:`Propostas (meta ${METAS_TARGETS.prop})`,  data: chartData.map(d=>d.prop), backgroundColor:'rgba(99,102,241,.7)', borderRadius:4 },
+          { label:`Locações (meta ${METAS_TARGETS.loc})`,    data: chartData.map(d=>d.loc),  backgroundColor:'rgba(16,185,129,.7)', borderRadius:4 },
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:12, font:{size:11} } } },
+        scales:{
+          y:{ beginAtZero:true, ticks:{ stepSize:1, font:{size:11} }, grid:{ color:'#f0f0f4' } },
+          x:{ ticks:{ font:{size:11} }, grid:{ display:false } }
+        }
+      }
+    });
+  }
+
+  // Tabela de lançamentos
+  const wrap = document.getElementById('metasTableWrap');
+  const countEl = document.getElementById('metasTableCount');
+  if (countEl) countEl.textContent = jefMes.length + ' registro' + (jefMes.length!==1?'s':'');
+  if (wrap) {
+    if (!jefMes.length) {
+      wrap.innerHTML = '<div class="state-wrap">Nenhum lançamento para este período.</div>';
+    } else {
+      const statusColor = s => {
+        const u = String(s).toUpperCase();
+        return u==='FECHADO' ? '#065f46' : u==='DECLINOU' ? 'var(--red)' : '#92400e';
+      };
+      const statusBg = s => {
+        const u = String(s).toUpperCase();
+        return u==='FECHADO' ? 'var(--green-light)' : u==='DECLINOU' ? 'var(--red-light)' : 'var(--yellow-light)';
+      };
+      wrap.innerHTML = `<div class="table-wrap"><table>
+        <thead><tr><th>Data</th><th>Cliente</th><th>Finalidade</th><th>Imóvel</th><th>Status</th><th>VGV</th></tr></thead>
+        <tbody>${jefMes.map(r => {
+          const vgv = r['VGV'] && parseFloat(String(r['VGV']).replace(/[^0-9,]/g,'').replace(',','.')) > 0
+            ? 'R$ ' + parseFloat(String(r['VGV']).replace(/[^0-9,]/g,'').replace(',','.')).toLocaleString('pt-BR') : '—';
+          return `<tr>
+            <td style="font-size:12px;white-space:nowrap">${r['DATA']||'—'}</td>
+            <td><div class="td-name">${r['CLIENTE']||'—'}</div></td>
+            <td><span style="font-size:11px;background:var(--primary-light);color:var(--primary);padding:2px 8px;border-radius:12px">${r['Finalidade']||'—'}</span></td>
+            <td style="font-size:12px">${r['IMÓVEL']||'—'}</td>
+            <td><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;background:${statusBg(r['STATUS'])};color:${statusColor(r['STATUS'])}">${r['STATUS']||'—'}</span></td>
+            <td style="font-size:12px;font-weight:700;color:${vgv!=='—'?'var(--green)':'var(--muted)'}">${vgv}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`;
+    }
+  }
+}
+
+function setMetasMes(m) {
+  metasMes = String(m);
+  drawMetas();
 }
 
 // ── DISTRIBUIÇÃO ──────────────────────────────────────────────────────
