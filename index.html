@@ -664,10 +664,12 @@ const SHEET_GID = '1911345035';
 const DISTRIB_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyeWWPmp5kvQzUf1vD8PEx1d9YVD3B8SZqHtdTKSoUVKNRpabBz8GlVkn_PxMpE2mqEXQ/exec';
 const BASE_CONTRATOS = 100;
 const BASE_DATE      = new Date(2026, 4, 30);
-const METAS_SHEET_ID = '108IEomNQTN6BR2Mvj1RkrDiXK56kq-DNiQ2QTfdx2w4';
-const METAS_GID      = '122887448';
-const METAS_TARGETS  = { ang: 2, prop: 5, loc: 5 };
-const METAS_WEIGHTS  = { ang: 0.30, prop: 0.05, loc: 0.65 };
+const METAS_SHEET_ID  = '108IEomNQTN6BR2Mvj1RkrDiXK56kq-DNiQ2QTfdx2w4';
+const METAS_GID       = '122887448';
+const METAS_CSV_URL   = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS_EwGBzqGL665DLtNZCUljyWdxBkkenGbL2cPyYRyEvvWX3CLfy97NFlBJL9qGt3kNQeNzUuIonr33/pub?gid=122887448&single=true&output=csv';
+const METAS_CSV_BASE  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS_EwGBzqGL665DLtNZCUljyWdxBkkenGbL2cPyYRyEvvWX3CLfy97NFlBJL9qGt3kNQeNzUuIonr33/pub?output=csv';
+const METAS_TARGETS   = { ang: 2, prop: 5, loc: 5 };
+const METAS_WEIGHTS   = { ang: 0.30, prop: 0.05, loc: 0.65 };
 const PAGE_TITLES = { overview:'Visão Geral', tarefas:'Tarefas', contratos:'Contratos', financeiro:'Financeiro', metas:'Metas', distribuicao:'Distribuição', agenda:'Agenda', configuracoes:'Configurações' };
 
 // ── STATE ─────────────────────────────────────────────────────────────
@@ -1195,8 +1197,32 @@ function fetchMetasViaGViz() {
 }
 
 async function loadMetasData() {
-  try { metasData = await fetchMetasViaGViz(); return true; }
-  catch(e) { console.error('Metas fetch:', e); return false; }
+  // 1. GViz (funciona se a planilha for pública)
+  try {
+    const rows = await fetchMetasViaGViz();
+    if (rows.length) { metasData = rows; return true; }
+  } catch(e) {}
+  // 2. CSV direto com gid
+  try {
+    const r = await fetch(METAS_CSV_URL);
+    if (r.ok) { const rows = parseCSV(await r.text()); if (rows.length) { metasData = rows; return true; } }
+  } catch(e) {}
+  // 3. CSV sem gid (sheet default publicada)
+  try {
+    const r = await fetch(METAS_CSV_BASE);
+    if (r.ok) { const rows = parseCSV(await r.text()); if (rows.length) { metasData = rows; return true; } }
+  } catch(e) {}
+  // 4. CORS proxy
+  try {
+    const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(METAS_CSV_URL));
+    if (r.ok) { const rows = parseCSV(await r.text()); if (rows.length) { metasData = rows; return true; } }
+  } catch(e) {}
+  // 5. allorigins
+  try {
+    const r = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(METAS_CSV_URL));
+    if (r.ok) { const rows = parseCSV(await r.text()); if (rows.length) { metasData = rows; return true; } }
+  } catch(e) {}
+  return false;
 }
 
 async function reloadMetas() {
