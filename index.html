@@ -1168,60 +1168,75 @@ function parseGVizDate(v) {
 }
 
 function fetchMetasViaGViz() {
-  return new Promise((resolve, reject) => {
-    const cb = '_gvizM' + Date.now();
-    const timer = setTimeout(() => { cleanup(); reject(new Error('timeout')); }, 12000);
-    function cleanup() { clearTimeout(timer); delete window[cb]; const s = document.getElementById(cb); if (s) s.remove(); }
-    const url = `https://docs.google.com/spreadsheets/d/${METAS_SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${cb}&gid=${METAS_GID}`;
-    const script = document.createElement('script');
-    script.id = cb;
-    script.src = url;
-    script.onerror = () => { cleanup(); reject(new Error('script error')); };
-    document.head.appendChild(script);
-    window[cb] = function(resp) {
-      cleanup();
-      try {
-        const cols = resp.table.cols.map(c => c.label);
-        const rows = resp.table.rows
-          .filter(row => row.c && row.c.some(c => c && c.v !== null && c.v !== undefined && c.v !== ''))
-          .map(row => Object.fromEntries(cols.map((c, i) => {
-            const cell = row.c[i];
-            let val = cell ? cell.v : '';
-            if (val !== null && val !== undefined && String(val).match(/^Date\(/)) val = parseGVizDate(val);
-            return [c, val !== null && val !== undefined ? val : ''];
-          })));
-        resolve(rows.filter(r => r['CLIENTE'] || r['DATA']));
-      } catch(e) { reject(e); }
-    };
-  });
+  // Tenta primeiro com a URL publicada (2PACX), depois com o ID direto
+  const urls = [
+    `https://docs.google.com/spreadsheets/d/e/2PACX-1vS_EwGBzqGL665DLtNZCUljyWdxBkkenGbL2cPyYRyEvvWX3CLfy97NFlBJL9qGt3kNQeNzUuIonr33/pub?output=gviz&gid=${METAS_GID}`,
+    `https://docs.google.com/spreadsheets/d/${METAS_SHEET_ID}/gviz/tq?gid=${METAS_GID}`,
+  ];
+  function tryUrl(urlIndex) {
+    return new Promise((resolve, reject) => {
+      if (urlIndex >= urls.length) { reject(new Error('all urls failed')); return; }
+      const cb = '_gvizM' + Date.now();
+      const timer = setTimeout(() => { cleanup(); tryUrl(urlIndex+1).then(resolve).catch(reject); }, 8000);
+      function cleanup() { clearTimeout(timer); delete window[cb]; const s = document.getElementById(cb); if (s) s.remove(); }
+      const sep = urls[urlIndex].includes('?') ? '&' : '?';
+      const url = urls[urlIndex] + sep + `tqx=out:json;responseHandler:${cb}`;
+      const script = document.createElement('script');
+      script.id = cb;
+      script.src = url;
+      script.onerror = () => { cleanup(); tryUrl(urlIndex+1).then(resolve).catch(reject); };
+      document.head.appendChild(script);
+      window[cb] = function(resp) {
+        cleanup();
+        try {
+          const cols = resp.table.cols.map(c => c.label);
+          const rows = resp.table.rows
+            .filter(row => row.c && row.c.some(c => c && c.v !== null && c.v !== undefined && c.v !== ''))
+            .map(row => Object.fromEntries(cols.map((c, i) => {
+              const cell = row.c[i];
+              let val = cell ? cell.v : '';
+              if (val !== null && val !== undefined && String(val).match(/^Date\(/)) val = parseGVizDate(val);
+              return [c, val !== null && val !== undefined ? val : ''];
+            })));
+          const filtered = rows.filter(r => r['CLIENTE'] || r['DATA']);
+          if (filtered.length) resolve(filtered); else tryUrl(urlIndex+1).then(resolve).catch(reject);
+        } catch(e) { tryUrl(urlIndex+1).then(resolve).catch(reject); }
+      };
+    });
+  }
+  return tryUrl(0);
+}
+
+async function tryFetchCSV(url) {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const text = await r.text();
+    if (!text.trim() || text.startsWith('<!')) return null; // HTML = erro
+    const rows = parseCSV(text).filter(r => Object.values(r).some(v => v));
+    return rows.length ? rows : null;
+  } catch(e) { return null; }
 }
 
 async function loadMetasData() {
-  // 1. GViz (funciona se a planilha for pública)
+  // 1. GViz (funciona se a planilha for pública/publicada)
   try {
     const rows = await fetchMetasViaGViz();
-    if (rows.length) { metasData = rows; return true; }
+    if (rows && rows.length) { metasData = rows; return true; }
   } catch(e) {}
-  // 2. CSV direto com gid
-  try {
-    const r = await fetch(METAS_CSV_URL);
-    if (r.ok) { const rows = parseCSV(await r.text()); if (rows.length) { metasData = rows; return true; } }
-  } catch(e) {}
-  // 3. CSV sem gid (sheet default publicada)
-  try {
-    const r = await fetch(METAS_CSV_BASE);
-    if (r.ok) { const rows = parseCSV(await r.text()); if (rows.length) { metasData = rows; return true; } }
-  } catch(e) {}
-  // 4. CORS proxy
-  try {
-    const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(METAS_CSV_URL));
-    if (r.ok) { const rows = parseCSV(await r.text()); if (rows.length) { metasData = rows; return true; } }
-  } catch(e) {}
-  // 5. allorigins
-  try {
-    const r = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(METAS_CSV_URL));
-    if (r.ok) { const rows = parseCSV(await r.text()); if (rows.length) { metasData = rows; return true; } }
-  } catch(e) {}
+
+  const csvUrls = [
+    METAS_CSV_URL,
+    METAS_CSV_BASE,
+    'https://corsproxy.io/?' + encodeURIComponent(METAS_CSV_URL),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(METAS_CSV_URL),
+    'https://corsproxy.io/?' + encodeURIComponent(METAS_CSV_BASE),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(METAS_CSV_BASE),
+  ];
+  for (const url of csvUrls) {
+    const rows = await tryFetchCSV(url);
+    if (rows) { metasData = rows; return true; }
+  }
   return false;
 }
 
